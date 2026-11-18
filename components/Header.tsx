@@ -119,7 +119,7 @@ export default function Header({
             height="32"
             style={{
               display: 'block',
-              filter: 'drop-shadow(0 2px 8px rgba(0, 242, 254, 0.45))',
+              filter: 'drop-shadow(0 2px 5px rgba(0, 0, 0, 0.25))',
             }}
           />
           <span

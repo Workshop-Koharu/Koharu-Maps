@@ -580,23 +580,8 @@ export default function MapViewport({
     <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
       <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block', cursor: 'grab' }} />
 
-      {/* Floating Layer Switcher Pill */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 18,
-          right: 18,
-          zIndex: 85,
-          display: 'flex',
-          alignItems: 'center',
-          background: 'var(--bg-surface-glass)',
-          backdropFilter: 'blur(16px)',
-          border: '1px solid var(--border-color)',
-          borderRadius: '30px',
-          padding: '3px',
-          boxShadow: 'var(--shadow-md)',
-        }}
-      >
+      {/* Floating Layer Switcher Pill (Mac Style, Positioned cleanly below Header) */}
+      <div className="floating-layer-switcher">
         <button
           type="button"
           onClick={() => handleModeSwitch('hybrid')}

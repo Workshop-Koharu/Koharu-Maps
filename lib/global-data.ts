@@ -255,11 +255,12 @@ export function buildGlobalMasterDataset(): {
   return { features, roadGraph, searchIndex };
 }
 
-let _masterDataCache: ReturnType<typeof buildGlobalMasterDataset> | null = null;
+// Global Singleton Dataset Cache
+let _masterData: ReturnType<typeof buildGlobalMasterDataset> | null = null;
 
 export function getMasterData() {
-  if (!_masterDataCache) {
-    _masterDataCache = buildGlobalMasterDataset();
+  if (!_masterData) {
+    _masterData = buildGlobalMasterDataset();
   }
-  return _masterDataCache;
+  return _masterData;
 }

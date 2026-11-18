@@ -1,62 +1,144 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
   <defs>
-    <!-- Vibrant Blue & Cyan Gradients -->
-    <linearGradient id="primaryGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#00f2fe" />
-      <stop offset="100%" stop-color="#2563eb" />
-    </linearGradient>
-    <linearGradient id="secondaryGrad" x1="100%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#38bdf8" />
-      <stop offset="100%" stop-color="#1d4ed8" />
-    </linearGradient>
-    <linearGradient id="accentGrad" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#1e40af" />
-      <stop offset="100%" stop-color="#0284c7" />
-    </linearGradient>
-    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="3" result="blur" />
-      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    <!-- Mac-style Soft Drop Shadows -->
+    <filter id="macShadow" x="-15%" y="-15%" width="130%" height="135%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.28" />
     </filter>
+    <filter id="pinShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="2.5" flood-color="#000000" flood-opacity="0.35" />
+    </filter>
+
+    <!-- Clip Paths for each of the 3 folded map panels -->
+    <clipPath id="panelLeftClip">
+      <polygon points="12,22 38,14 38,82 12,74" />
+    </clipPath>
+    <clipPath id="panelCenterClip">
+      <polygon points="38,14 64,22 64,90 38,82" />
+    </clipPath>
+    <clipPath id="panelRightClip">
+      <polygon points="64,22 88,14 88,74 64,90" />
+    </clipPath>
+
+    <!-- Pin Gradient (Apple Maps Coral Red) -->
+    <linearGradient id="pinGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ff453a" />
+      <stop offset="100%" stop-color="#d91b24" />
+    </linearGradient>
+
+    <!-- Center Fold Shadow (Valley Fold) -->
+    <linearGradient id="centerFoldGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#000000" stop-opacity="0.18" />
+      <stop offset="50%" stop-color="#000000" stop-opacity="0.06" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.16" />
+    </linearGradient>
+
+    <!-- Left & Right Fold Highlights -->
+    <linearGradient id="leftPanelGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.1" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.06" />
+    </linearGradient>
+    <linearGradient id="rightPanelGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#000000" stop-opacity="0.08" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.15" />
+    </linearGradient>
   </defs>
 
-  <!-- Orbital Ring (Tilted 30 deg) -->
-  <g transform="rotate(-28 50 50)">
-    <ellipse cx="50" cy="50" rx="42" ry="15" fill="none" stroke="url(#primaryGrad)" stroke-width="2.5" opacity="0.85" />
-    <circle cx="92" cy="50" r="3.5" fill="#00f2fe" filter="url(#glow)" />
-    <circle cx="8" cy="50" r="2" fill="#38bdf8" />
+  <!-- Ground Ambient Shadow -->
+  <ellipse cx="50" cy="86" rx="38" ry="7" fill="#000000" opacity="0.22" />
+
+  <!-- Entire Map Group with Drop Shadow -->
+  <g filter="url(#macShadow)">
+    <!-- ========================================== -->
+    <!-- LEFT PANEL (12,22 -> 38,14 -> 38,82 -> 12,74) -->
+    <!-- ========================================== -->
+    <g clip-path="url(#panelLeftClip)">
+      <!-- Land Base -->
+      <polygon points="12,22 38,14 38,82 12,74" fill="#f8fafc" />
+
+      <!-- Green Park Area -->
+      <path d="M 10,35 Q 24,30 30,45 Q 35,58 20,65 Z" fill="#86efac" opacity="0.8" />
+
+      <!-- Water Feature / River -->
+      <path d="M 12,65 Q 26,60 38,70 L 38,82 L 12,74 Z" fill="#38bdf8" />
+
+      <!-- Road Grid -->
+      <path d="M 10,40 L 40,48" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round" />
+      <path d="M 10,40 L 40,48" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round" />
+      <path d="M 24,18 L 24,80" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+
+      <!-- Lighting Overlay -->
+      <polygon points="12,22 38,14 38,82 12,74" fill="url(#leftPanelGrad)" />
+      <!-- Border Stroke -->
+      <polygon points="12,22 38,14 38,82 12,74" fill="none" stroke="#cbd5e1" stroke-width="1" />
+    </g>
+
+    <!-- ========================================== -->
+    <!-- CENTER PANEL (38,14 -> 64,22 -> 64,90 -> 38,82) -->
+    <!-- ========================================== -->
+    <g clip-path="url(#panelCenterClip)">
+      <!-- Land Base -->
+      <polygon points="38,14 64,22 64,90 38,82" fill="#f1f5f9" />
+
+      <!-- Green Park Continuation -->
+      <path d="M 38,40 Q 48,34 60,42 L 56,56 Q 44,52 38,48 Z" fill="#86efac" opacity="0.8" />
+
+      <!-- Water River Crossing -->
+      <path d="M 38,70 Q 50,78 64,68 L 64,80 Q 48,88 38,82 Z" fill="#38bdf8" />
+
+      <!-- Main Road Arteries -->
+      <path d="M 38,48 Q 50,52 64,46" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round" />
+      <path d="M 38,48 Q 50,52 64,46" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round" />
+      <path d="M 50,18 L 50,86" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+
+      <!-- Navigation Route Ribbon (Apple Blue) -->
+      <path d="M 42,66 Q 50,52 58,48" stroke="#3b82f6" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="1 0" />
+      <path d="M 42,66 Q 50,52 58,48" stroke="#ffffff" stroke-width="1.2" stroke-linecap="round" stroke-dasharray="2 2" />
+
+      <!-- Valley Fold Shadow -->
+      <polygon points="38,14 64,22 64,90 38,82" fill="url(#centerFoldGrad)" />
+      <!-- Border Stroke -->
+      <polygon points="38,14 64,22 64,90 38,82" fill="none" stroke="#94a3b8" stroke-width="1" />
+    </g>
+
+    <!-- ========================================== -->
+    <!-- RIGHT PANEL (64,22 -> 88,14 -> 88,74 -> 64,90) -->
+    <!-- ========================================== -->
+    <g clip-path="url(#panelRightClip)">
+      <!-- Land Base -->
+      <polygon points="64,22 88,14 88,74 64,90" fill="#f8fafc" />
+
+      <!-- Ocean / Water Section -->
+      <path d="M 64,68 Q 76,58 90,62 L 90,75 L 64,90 Z" fill="#38bdf8" />
+
+      <!-- Secondary Roads -->
+      <path d="M 64,46 L 90,40" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round" />
+      <path d="M 64,46 L 90,40" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round" />
+      <path d="M 76,20 L 76,80" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+
+      <!-- Lighting Overlay -->
+      <polygon points="64,22 88,14 88,74 64,90" fill="url(#rightPanelGrad)" />
+      <!-- Border Stroke -->
+      <polygon points="64,22 88,14 88,74 64,90" fill="none" stroke="#cbd5e1" stroke-width="1" />
+    </g>
   </g>
 
-  <!-- Inner Geodetic Calibration Ring -->
-  <circle cx="50" cy="50" r="26" fill="none" stroke="#38bdf8" stroke-width="1.2" stroke-dasharray="3,3" opacity="0.6" />
+  <!-- ========================================== -->
+  <!-- MAC STYLE LOCATION PIN (Destination Anchor) -->
+  <!-- ========================================== -->
+  <g filter="url(#pinShadow)">
+    <!-- Teardrop Pin Shape centered at (58, 48) -->
+    <path d="M 58,25 
+             C 50.5,25 44.5,31 44.5,38.5 
+             C 44.5,47.5 58,62 58,62 
+             C 58,62 71.5,47.5 71.5,38.5 
+             C 71.5,31 65.5,25 58,25 Z" 
+          fill="url(#pinGrad)" 
+          stroke="#b91c1c" 
+          stroke-width="0.8" />
 
-  <!-- Diagonal Compass Rays -->
-  <polygon points="50,50 68,32 50,42" fill="#60a5fa" opacity="0.75" />
-  <polygon points="50,50 68,32 58,50" fill="#3b82f6" opacity="0.75" />
-  <polygon points="50,50 68,68 58,50" fill="#2563eb" opacity="0.75" />
-  <polygon points="50,50 68,68 50,58" fill="#1d4ed8" opacity="0.75" />
-  <polygon points="50,50 32,68 50,58" fill="#1e40af" opacity="0.75" />
-  <polygon points="50,50 32,68 42,50" fill="#2563eb" opacity="0.75" />
-  <polygon points="50,50 32,32 42,50" fill="#3b82f6" opacity="0.75" />
-  <polygon points="50,50 32,32 50,42" fill="#60a5fa" opacity="0.75" />
-
-  <!-- Main 4-Point Compass Star -->
-  <!-- North Needle (Bright Electric Cyan) -->
-  <polygon points="50,6 59,50 50,44" fill="url(#primaryGrad)" filter="url(#glow)" />
-  <polygon points="50,6 41,50 50,44" fill="#0284c7" />
-
-  <!-- South Needle -->
-  <polygon points="50,94 59,50 50,56" fill="#1e3a8a" />
-  <polygon points="50,94 41,50 50,56" fill="#172554" />
-
-  <!-- East Needle -->
-  <polygon points="94,50 50,59 56,50" fill="url(#secondaryGrad)" />
-  <polygon points="94,50 50,41 56,50" fill="#1e40af" />
-
-  <!-- West Needle -->
-  <polygon points="6,50 50,41 44,50" fill="#38bdf8" />
-  <polygon points="6,50 50,59 44,50" fill="#0284c7" />
-
-  <!-- Central Precision Core Pivot -->
-  <circle cx="50" cy="50" r="7.5" fill="#070a13" stroke="#00f2fe" stroke-width="2.5" />
-  <circle cx="50" cy="50" r="3.2" fill="#ffffff" />
+    <!-- Pin Inner Core Circle -->
+    <circle cx="58" cy="38" r="4.8" fill="#ffffff" />
+    <!-- Pin Specular Highlight -->
+    <ellipse cx="55.5" cy="32" rx="3.5" ry="2" fill="#ffffff" opacity="0.45" />
+  </g>
 </svg>

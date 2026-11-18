@@ -55,7 +55,7 @@ export default function LanguageSelector() {
     <div style={{ position: 'relative' }} ref={dropdownRef}>
       <button
         type="button"
-        className="btn btn-secondary"
+        className="btn btn-outline"
         onClick={() => setIsOpen(!isOpen)}
         style={{
           display: 'flex',

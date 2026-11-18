@@ -271,3 +271,27 @@ body, html {
     display: none !important;
   }
 }
+
+.floating-layer-switcher {
+  position: absolute;
+  top: 72px;
+  right: 18px;
+  z-index: 85;
+  display: flex;
+  align-items: center;
+  background: var(--bg-surface-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color);
+  border-radius: 30px;
+  padding: 3px;
+  box-shadow: var(--shadow-md);
+}
+
+@media (max-width: 768px) {
+  .floating-layer-switcher {
+    top: 112px;
+    right: 14px;
+    padding: 2px;
+  }
+}

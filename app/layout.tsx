@@ -10,9 +10,12 @@ export const metadata: Metadata = {
   creator: 'KCS - Koharu Coding Server',
   publisher: 'KCS - Koharu Coding Server',
   icons: {
-    icon: '/favicon.svg',
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/logo.svg', type: 'image/svg+xml' },
+    ],
     shortcut: '/favicon.svg',
-    apple: '/favicon.svg',
+    apple: '/logo.svg',
   },
   openGraph: {
     title: 'Koharu Maps',
