@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Koharu Maps — Standalone GIS & Cartographic Engine</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="/static/css/auth.css">
+</head>
+<body data-theme="light">
+  <div id="app-container">
+    <!-- 1. Header Toolbar -->
+    <header id="main-header">
+      <div class="brand-section">
+        <span class="brand-logo"></span>
+        <span class="brand-name">Koharu Maps</span>
+        <span class="brand-badge">OFFLINE GIS</span>
+      </div>
+
+      <!-- Search Box with Autocomplete -->
+      <div id="search-container">
+        <div class="search-input-wrapper">
+          <span class="search-icon"></span>
+          <input type="text" id="global-search-input" placeholder="장소, 주소, 도로명 검색 (예: 강남역, 광화문)" autocomplete="off">
+          <button id="search-clear-btn" class="search-clear-btn" title="검색어 지우기"></button>
+        </div>
+        <div id="search-dropdown"></div>
+      </div>
+
+      <!-- Right Action Tools -->
+      <div class="header-actions">
+        <button id="nav-toggle-btn" class="header-btn" title="길찾기 및 경로 탐색">
+          <span></span> <span>길찾기</span>
+        </button>
+        <button id="favorites-toggle-btn" class="header-btn" title="내 즐겨찾기">
+          <span></span> <span>즐겨찾기</span>
+        </button>
+        <a href="/developer" class="header-btn" title="무료 API 키 발급 및 문서">
+          <span></span> <span>API 서비스</span>
+        </a>
+        <button id="theme-toggle-btn" class="header-btn" title="지도 테마 변경">
+          <span></span>
+        </button>
+
+        <!-- Auth Action: Login Button or User Profile -->
+        <button id="auth-action-btn" class="header-btn btn-primary" onclick="KoharuAuth.openAuthModal('login')">
+          <span>로그인</span>
+        </button>
+        <div id="user-profile-menu" class="user-profile-menu">
+          <div class="user-avatar" id="user-avatar-icon"></div>
+          <span id="user-name-label" style="font-size: 13px; font-weight: 600;">사용자</span>
+          <button id="logout-btn" class="btn-logout" title="로그아웃">로그아웃</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- 2. Pure Canvas Vector Map Viewport -->
+    <main id="map-viewport"></main>
+
+    <!-- 3. Navigation & Routing Panel -->
+    <aside id="route-panel" class="floating-sidebar-panel">
+      <div class="panel-header">
+        <div class="panel-title"> 길찾기 (자체 도로망 A*)</div>
+        <button id="close-route-panel-btn" class="panel-close-btn"></button>
+      </div>
+      <div class="panel-body">
+        <div class="route-input-group">
+          <div class="route-input-row">
+            <span style="color: #10b981; font-weight: bold;">출발</span>
+            <input type="text" id="route-start-input" placeholder="지도 클릭 또는 장소 검색" readonly>
+          </div>
+          <button id="btn-swap-route" class="route-swap-btn" title="출발/도착 교환">⇅</button>
+          <div class="route-input-row">
+            <span style="color: #ef4444; font-weight: bold;">도착</span>
+            <input type="text" id="route-target-input" placeholder="지도 클릭 또는 장소 검색" readonly>
+          </div>
+        </div>
+
+        <div class="route-presets">
+          <button class="route-preset-btn" data-lon="126.9768" data-lat="37.5750" data-name="광화문">광화문</button>
+          <button class="route-preset-btn" data-lon="126.9710" data-lat="37.5550" data-name="서울역">서울역</button>
+          <button class="route-preset-btn" data-lon="127.0280" data-lat="37.4980" data-name="강남역">강남역</button>
+          <button class="route-preset-btn" data-lon="127.0590" data-lat="37.5115" data-name="코엑스">코엑스</button>
+          <button class="route-preset-btn" data-lon="127.1025" data-lat="37.5126" data-name="잠실역">잠실역</button>
+          <button class="route-preset-btn" data-lon="127.1139" data-lat="36.8151" data-name="천안시청">천안시청</button>
+        </div>
+
+        <div class="route-action-buttons">
+          <button id="btn-calc-route" class="btn btn-primary">경로 탐색</button>
+          <button id="btn-clear-route" class="btn btn-outline">경로 초기화</button>
+        </div>
+
+        <div id="route-instructions-container"></div>
+      </div>
+    </aside>
+
+    <!-- 4. Favorites Panel -->
+    <aside id="favorites-panel" class="floating-sidebar-panel">
+      <div class="panel-header">
+        <div class="panel-title"> 내 즐겨찾기</div>
+        <button id="close-fav-panel-btn" class="panel-close-btn"></button>
+      </div>
+      <div class="panel-body">
+        <div id="favorites-list-container"></div>
+      </div>
+    </aside>
+
+    <!-- 5. Bottom Map Controls -->
+    <div id="map-controls-toolbar">
+      <button id="ctrl-zoom-in" class="map-ctrl-btn" title="확대">+</button>
+      <button id="ctrl-zoom-out" class="map-ctrl-btn" title="축소">−</button>
+      <button id="ctrl-compass" class="map-ctrl-btn" title="북쪽 정렬"></button>
+      <button id="ctrl-pitch-toggle" class="map-ctrl-btn" title="2.5D 기울기"></button>
+      <button id="ctrl-current-location" class="map-ctrl-btn" title="기본 위치 (서울)"></button>
+    </div>
+
+    <!-- 6. Bottom Status Bar -->
+    <footer id="bottom-status-bar">
+      <div class="status-dot"></div>
+      <span>오프라인 단독 엔진 (WGS84 / Web Mercator)</span>
+      <span id="status-zoom">Z: 13.0</span>
+      <span id="status-coordinates">126.97840, 37.56630</span>
+    </footer>
+
+    <!-- 7. Map Context Click Popup -->
+    <div id="map-context-popup">
+      <div class="popup-header">
+        <div id="popup-title">선택된 위치</div>
+        <div id="popup-address">-</div>
+        <div id="popup-coords">-</div>
+        <button id="popup-close-btn" class="popup-close"></button>
+      </div>
+      <div class="popup-actions">
+        <button id="popup-set-start" class="popup-action-btn"> 출발지로 지정</button>
+        <button id="popup-set-target" class="popup-action-btn"> 도착지로 지정</button>
+        <button id="popup-add-favorite" class="popup-action-btn"> 즐겨찾기에 추가</button>
+      </div>
+    </div>
+
+    <!-- 8. Login & Register Modal (Social OAuth2 Supported) -->
+    <div id="auth-modal" class="auth-modal-overlay">
+      <div class="auth-modal-card">
+        <div class="auth-modal-header">
+          <div class="auth-modal-title">Koharu Maps 계정</div>
+          <button id="close-auth-modal" class="auth-modal-close"></button>
+        </div>
+
+        <div id="auth-notice-message" class="auth-notice-alert"></div>
+
+        <div class="auth-tabs">
+          <button id="tab-login-btn" class="auth-tab-btn active">로그인</button>
+          <button id="tab-register-btn" class="auth-tab-btn">회원가입</button>
+        </div>
+
+        <!-- Login Form -->
+        <div id="login-form-container">
+          <form id="login-form" class="auth-form-body">
+            <div id="login-error-msg" class="auth-error-banner"></div>
+            <div class="auth-input-group">
+              <label>이메일</label>
+              <input type="email" id="login-email" required placeholder="name@example.com">
+            </div>
+            <div class="auth-input-group">
+              <label>비밀번호</label>
+              <input type="password" id="login-password" required placeholder="••••••••">
+            </div>
+            <button type="submit" class="btn btn-primary" style="margin-top: 4px;">로그인</button>
+
+            <div class="social-divider"><span>또는 소셜 계정으로 로그인</span></div>
+
+            <div class="social-login-group">
+              <button type="button" class="social-login-btn google" data-provider="google">
+                <span>Google 계정으로 계속</span>
+              </button>
+              <button type="button" class="social-login-btn discord" data-provider="discord">
+                <span>Discord 계정으로 계속</span>
+              </button>
+              <button type="button" class="social-login-btn github" data-provider="github">
+                <span>GitHub 계정으로 계속</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Register Form -->
+        <div id="register-form-container" style="display: none;">
+          <form id="register-form" class="auth-form-body">
+            <div id="register-error-msg" class="auth-error-banner"></div>
+            <div class="auth-input-group">
+              <label>이름</label>
+              <input type="text" id="register-name" required placeholder="홍길동">
+            </div>
+            <div class="auth-input-group">
+              <label>이메일</label>
+              <input type="email" id="register-email" required placeholder="name@example.com">
+            </div>
+            <div class="auth-input-group">
+              <label>비밀번호</label>
+              <input type="password" id="register-password" required minlength="6" placeholder="최소 6자 이상">
+            </div>
+            <button type="submit" class="btn btn-primary" style="margin-top: 4px;">무료 회원가입</button>
+
+            <div class="social-divider"><span>또는 소셜 계정으로 회원가입</span></div>
+
+            <div class="social-login-group">
+              <button type="button" class="social-login-btn google" data-provider="google">
+                <span>Google 계정으로 계속</span>
+              </button>
+              <button type="button" class="social-login-btn discord" data-provider="discord">
+                <span>Discord 계정으로 계속</span>
+              </button>
+              <button type="button" class="social-login-btn github" data-provider="github">
+                <span>GitHub 계정으로 계속</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="/static/js/kmap-engine.js"></script>
+  <script src="/static/js/auth.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

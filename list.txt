@@ -1,0 +1,1096 @@
+# 프로젝트 마스터 개발 명세서 — Koharu Maps
+
+## Zero-Dependency Standalone GIS \& Offline Cartographic Engine
+
+---
+
+# 0\. 프로젝트 선언
+
+당신은 세계 최고 수준의 GIS(Geographic Information System), Cartographic Engineering, Computational Geometry, Computer Graphics, Spatial Database, Navigation Algorithm 분야의 전문 소프트웨어 아키텍트이자 시니어 시스템 엔지니어다.
+
+이번 프로젝트의 목적은 기존 지도 서비스에 의존하지 않는 완전 독립형 지도 소프트웨어 **Koharu Maps**를 개발하는 것이다.
+
+단순히 지도 API를 대체하거나 기존 지도 SDK를 감싸는 웹 애플리케이션을 만드는 것이 아니다.
+
+지도 데이터의 내부 표현, 공간 데이터베이스, 좌표 변환, 지도 투영, 벡터 렌더링, 지형 렌더링, 공간 인덱싱, 지리정보 검색, 경로 탐색, 지도 타일 생성, 오프라인 데이터 관리에 이르기까지 핵심 시스템을 직접 설계하고 구현한다.
+
+최종 결과물은 인터넷 연결이 완전히 차단된 환경에서도 정상적으로 작동하는 독립형 지도 시스템이어야 한다.
+
+## 절대적인 개발 원칙
+
+다음 조건은 프로젝트 전체에 적용되는 강제 요구사항이다.
+
+1. Google Maps API 사용 금지.
+2. Google Maps SDK 사용 금지.
+3. 네이버 지도 API 및 SDK 사용 금지.
+4. 카카오맵 API 및 SDK 사용 금지.
+5. Mapbox API 및 SDK 사용 금지.
+6. MapLibre GL JS 사용 금지.
+7. OpenLayers 사용 금지.
+8. Leaflet 사용 금지.
+9. ArcGIS API 및 SDK 사용 금지.
+10. HERE Maps 사용 금지.
+11. TomTom API 및 SDK 사용 금지.
+12. 외부 지도 렌더링 서비스 사용 금지.
+13. 외부 지오코딩 서비스 사용 금지.
+14. 외부 경로 탐색 서비스 사용 금지.
+15. 외부 타일 서버 사용 금지.
+16. 런타임 외부 CDN 사용 금지.
+17. 외부 API 호출 금지.
+18. 인터넷 연결을 전제로 하는 기능 구현 금지.
+19. 기존 지도 엔진의 소스 코드를 가져와 자체 엔진인 것처럼 포장하는 행위 금지.
+20. 실제 구현하지 않은 기능을 구현 완료로 표시하는 행위 금지.
+
+OpenStreetMap, 공개 지리정보 데이터, 공공기관의 지리정보 등은 별도의 라이선스 및 사용 조건을 검토한 후 데이터 원본으로 활용할 수 있다. 단, 외부 지도 서비스를 호출하거나 타사 지도 렌더링 엔진을 사용하는 것은 허용하지 않는다.
+
+지도 엔진 자체는 독립적으로 구현한다.
+
+외부 데이터의 사용 여부와 관계없이 데이터 파싱, 내부 자료구조 변환, 공간 인덱싱, 렌더링, 경로 탐색은 자체 구현을 원칙으로 한다.
+
+---
+
+# 1\. 프로젝트 기본 정보
+
+프로젝트명: Koharu Maps
+
+프로젝트 유형:
+
+- Standalone GIS Software
+- Offline Digital Cartography
+- Independent Map Rendering Engine
+- Geographic Information Processing System
+- Offline Navigation System
+
+핵심 목표:
+
+- 완전 독립형 지도 엔진
+- 완전 오프라인 실행
+- 전국 단위 지도 데이터 지원
+- 자체 좌표 변환 시스템
+- 자체 벡터 지도 렌더러
+- 자체 지리정보 데이터베이스
+- 자체 경로 탐색 알고리즘
+- 자체 공간 검색 엔진
+- 고성능 지도 렌더링
+- 확장 가능한 지리정보 처리 아키텍처
+
+개발 방향:
+기능을 흉내 내는 데 집중하지 말고 실제 GIS 시스템으로서 작동하는 내부 구조를 구현한다.
+
+---
+
+# 2\. 시스템 아키텍처
+
+전체 시스템은 다음과 같은 모듈형 아키텍처로 구성한다.
+
+Koharu Maps
+│
+├── Application Layer
+│   ├── Main Application
+│   ├── Map Viewport
+│   ├── Navigation Interface
+│   ├── Search Interface
+│   ├── Settings Manager
+│   └── Offline Data Manager
+│
+├── Core GIS Engine
+│   ├── Coordinate Engine
+│   ├── Projection Engine
+│   ├── Geometry Engine
+│   ├── Spatial Index Engine
+│   ├── Map Renderer
+│   ├── Tile Engine
+│   └── Layer Manager
+│
+├── Cartographic Engine
+│   ├── Road Renderer
+│   ├── Building Renderer
+│   ├── Terrain Renderer
+│   ├── Water Renderer
+│   ├── Boundary Renderer
+│   ├── Label Renderer
+│   └── Symbol Renderer
+│
+├── Navigation Engine
+│   ├── Road Graph
+│   ├── Route Calculator
+│   ├── A\* Pathfinding
+│   ├── Dijkstra Algorithm
+│   ├── Route Optimization
+│   ├── Turn Instruction Generator
+│   └── Distance Calculator
+│
+├── Spatial Search Engine
+│   ├── Address Search
+│   ├── Place Search
+│   ├── Reverse Geocoding
+│   ├── Spatial Query
+│   └── Search Index
+│
+├── Geographic Data Engine
+│   ├── Data Importer
+│   ├── Data Parser
+│   ├── Data Validator
+│   ├── Data Converter
+│   ├── Data Compressor
+│   └── Data Exporter
+│
+├── Storage Engine
+│   ├── Map Database
+│   ├── Road Database
+│   ├── Building Database
+│   ├── Terrain Database
+│   ├── Place Database
+│   └── Spatial Metadata
+│
+└── Hardware Interface
+├── GPS Interface
+├── Display Interface
+├── Input Controller
+└── Local Filesystem Interface
+
+각 모듈은 명확한 인터페이스를 가져야 하며, 특정 모듈의 변경이 다른 모듈에 불필요한 영향을 주지 않도록 설계한다.
+
+---
+
+# 3\. 기술 스택 및 구현 전략
+
+개발 환경과 목표 플랫폼에 적합한 기술을 선정한다.
+
+권장 기술:
+
+## 3.1 시스템 코어
+
+- C++20 이상 또는 Rust
+- RAII 기반 리소스 관리
+- Zero-Copy Data Processing
+- Memory Pool
+- SIMD Optimization
+- Multithreaded Processing
+- Cache-Aware Data Structure
+- Asynchronous I/O
+
+핵심 지리정보 처리 및 렌더링 알고리즘은 직접 구현한다.
+
+## 3.2 그래픽 렌더링
+
+- OpenGL 또는 Vulkan
+- GLSL Shader
+- GPU Buffer Management
+- Vertex Buffer Object
+- Index Buffer Object
+- Framebuffer Object
+- Instanced Rendering
+- Frustum Culling
+- Viewport Culling
+- Level of Detail
+
+렌더링 API는 그래픽 하드웨어와 통신하기 위한 수단으로만 사용한다.
+
+지도 렌더링 로직은 직접 구현한다.
+
+## 3.3 데스크톱 인터페이스
+
+플랫폼에 적합한 UI 프레임워크를 선택한다.
+
+선정 기준:
+
+- 오프라인 리소스 지원
+- GPU 렌더링 지원
+- 고해상도 디스플레이 지원
+- 사용자 입력 처리
+- 메모리 사용량
+- 장기 유지보수 가능성
+
+UI 프레임워크가 지도 엔진을 대신해서는 안 된다.
+
+## 3.4 저장 시스템
+
+- 자체 바이너리 지도 포맷
+- SQLite 기반 메타데이터 저장
+- Binary Serialization
+- Spatial Index
+- Memory-Mapped File
+- Compression
+- Incremental Loading
+
+SQLite 등의 일반 저장 기술을 사용하는 것은 허용하지만 지도 데이터 모델과 지도 처리 엔진은 자체 설계한다.
+
+---
+
+# 4\. Coordinate Reference System
+
+좌표계 처리 시스템을 독립적으로 구현한다.
+
+## 4.1 기본 좌표계
+
+지원할 좌표계:
+
+- WGS84
+- EPSG:4326
+- Web Mercator
+- EPSG:3857
+- 대한민국에서 사용되는 주요 투영 좌표계
+
+## 4.2 좌표 변환 엔진
+
+다음 변환을 구현한다.
+
+1. Geographic Coordinate → Projected Coordinate
+2. Projected Coordinate → Geographic Coordinate
+3. Geographic Coordinate → Screen Coordinate
+4. Screen Coordinate → Geographic Coordinate
+5. World Coordinate → Local Coordinate
+6. Local Coordinate → World Coordinate
+
+## 4.3 지도 투영
+
+초기 구현은 Web Mercator를 기본 투영으로 사용한다.
+
+추가적으로 대한민국의 지리적 특성을 고려한 TM 계열 투영법을 지원할 수 있도록 구조를 설계한다.
+
+## 4.4 정밀도
+
+- Double Precision 기반 좌표 연산
+- Floating Point Error 관리
+- Coordinate Normalization
+- Longitude Wrapping
+- Latitude Boundary Validation
+- Projection Singularities 처리
+
+좌표 변환 과정에서 발생하는 오차를 테스트한다.
+
+---
+
+# 5\. Geographic Geometry Engine
+
+지도에 표현되는 모든 공간 객체를 처리하는 기하 엔진을 구현한다.
+
+지원 Geometry:
+
+- Point
+- MultiPoint
+- LineString
+- MultiLineString
+- Polygon
+- MultiPolygon
+- GeometryCollection
+
+## 5.1 기하 연산
+
+다음 기능을 구현한다.
+
+- Point-In-Polygon
+- Line Intersection
+- Polygon Intersection
+- Polygon Clipping
+- Line Clipping
+- Bounding Box
+- Convex Hull
+- Distance Between Points
+- Segment Projection
+- Geometry Simplification
+
+## 5.2 공간 객체 모델
+
+각 객체는 다음 속성을 가질 수 있어야 한다.
+
+- Object ID
+- Geometry Type
+- Coordinate Array
+- Bounding Box
+- Layer ID
+- Attribute Data
+- Visibility
+- Render Priority
+- Data Source Metadata
+
+대규모 지도 데이터 처리를 고려하여 불필요한 객체 복사를 최소화한다.
+
+---
+
+# 6\. 자체 Map Rendering Engine
+
+가장 중요한 핵심 모듈이다.
+
+기존 지도 SDK를 사용하지 않고 지도 화면을 직접 렌더링한다.
+
+## 6.1 렌더링 파이프라인
+
+Map Data
+↓
+Data Decoder
+↓
+Geometry Transformation
+↓
+Spatial Culling
+↓
+Geometry Processing
+↓
+Style Resolution
+↓
+GPU Buffer Generation
+↓
+Shader Processing
+↓
+Rasterization
+↓
+Framebuffer
+↓
+Display
+
+각 단계는 독립적으로 테스트할 수 있어야 한다.
+
+## 6.2 렌더링 대상
+
+다음 지리 객체를 표현한다.
+
+- 대륙
+- 국가 경계
+- 행정구역 경계
+- 도로
+- 고속도로
+- 국도
+- 지방도
+- 일반 도로
+- 골목길
+- 건물
+- 하천
+- 호수
+- 해안선
+- 공원
+- 산림
+- 철도
+- 지하철
+- 공항
+- 항만
+- 주요 시설물
+
+## 6.3 렌더링 최적화
+
+- Viewport Culling
+- Frustum Culling
+- Geometry Batching
+- Draw Call Reduction
+- GPU Instancing
+- Dynamic Buffer Allocation
+- Geometry Simplification
+- LOD
+- Occlusion Optimization
+- Spatial Partitioning
+
+화면 밖에 존재하는 객체는 가능한 한 렌더링하지 않는다.
+
+## 6.4 지도 스타일 시스템
+
+다양한 지도 테마를 지원한다.
+
+- Light
+- Dark
+- Neutral
+- Monochrome
+- High Contrast
+- Custom
+
+색상, 선 두께, 폰트 크기, 레이어 순서, 심볼 크기를 독립적으로 설정할 수 있어야 한다.
+
+---
+
+# 7\. Map Tile Engine
+
+독립적인 타일 관리 및 생성 시스템을 구현한다.
+
+## 7.1 타일 구조
+
+타일은 Zoom Level, X Coordinate, Y Coordinate를 기반으로 관리한다.
+
+타일 인덱싱 공식은 사용하는 투영 체계에 맞춰 직접 구현한다.
+
+## 7.2 타일 기능
+
+- Tile Generation
+- Tile Loading
+- Tile Caching
+- Tile Eviction
+- Tile Prefetching
+- Tile Boundary Calculation
+- Tile Dependency Management
+
+## 7.3 타일 저장 포맷
+
+자체 바이너리 컨테이너를 설계한다.
+
+권장 구조:
+
+KMAP
+│
+├── Header
+├── Version
+├── Coordinate Reference
+├── Geographic Bounds
+├── Zoom Metadata
+├── Layer Metadata
+├── Tile Index
+├── Tile Payload
+└── Integrity Checksum
+
+데이터 손상 여부를 확인할 수 있어야 한다.
+
+향후 포맷 버전이 변경되어도 이전 데이터의 마이그레이션이 가능해야 한다.
+
+---
+
+# 8\. Geographic Data Engine
+
+지도 데이터의 수집 이후 처리 과정을 전담하는 시스템이다.
+
+## 8.1 데이터 가져오기
+
+지원할 수 있는 원본 형식:
+
+- GeoJSON
+- Shapefile
+- CSV 좌표 데이터
+- 자체 바이너리 포맷
+- 일반적인 지리정보 데이터 형식
+
+단, 외부 GIS 엔진을 통해 데이터를 렌더링하거나 처리하는 방식은 사용하지 않는다.
+
+각 형식의 파서는 직접 구현한다.
+
+## 8.2 데이터 정규화
+
+원본 데이터를 내부 표준 모델로 변환한다.
+
+처리 항목:
+
+- 좌표계 정규화
+- Geometry Validation
+- 중복 객체 제거
+- 속성 정규화
+- ID 정규화
+- Bounding Box 생성
+- 공간 인덱스 생성
+- 데이터 무결성 검사
+
+## 8.3 데이터 계층
+
+데이터를 다음과 같이 분리한다.
+
+1. Terrain Layer
+2. Water Layer
+3. Road Layer
+4. Building Layer
+5. Boundary Layer
+6. Railway Layer
+7. Place Layer
+8. Label Layer
+
+각 계층은 독립적으로 활성화 및 비활성화할 수 있어야 한다.
+
+---
+
+# 9\. Spatial Database Engine
+
+지리정보를 효율적으로 검색하고 조회하는 자체 공간 데이터 처리 시스템을 구축한다.
+
+## 9.1 공간 인덱싱
+
+다음 알고리즘을 연구하고 구현한다.
+
+- R-Tree
+- QuadTree
+- KD-Tree
+- Uniform Grid
+- Bounding Volume Hierarchy
+
+용도에 맞는 인덱싱 알고리즘을 선정한다.
+
+## 9.2 공간 질의
+
+지원할 질의:
+
+- 특정 좌표 주변 객체 검색
+- 특정 반경 내 시설 검색
+- 특정 영역에 포함되는 객체 검색
+- 두 Geometry의 교차 여부
+- 가장 가까운 객체 검색
+- 특정 도로에 연결된 객체 검색
+
+## 9.3 검색 최적화
+
+- Spatial Index
+- Attribute Index
+- Prefix Search
+- Inverted Index
+- Query Cache
+- Incremental Search
+
+대규모 데이터에서도 검색 응답 시간이 안정적으로 유지되도록 한다.
+
+---
+
+# 10\. Navigation Engine
+
+자체 내비게이션 엔진을 구현한다.
+
+외부 경로 탐색 API는 절대로 사용하지 않는다.
+
+## 10.1 Road Graph
+
+도로를 그래프로 표현한다.
+
+Graph:
+
+- Vertex
+- Edge
+- Edge Weight
+- Direction
+- Road Type
+- Access Restriction
+- Speed Metadata
+- Turn Restriction
+
+도로의 실제 연결 관계를 유지해야 한다.
+
+단순히 도로의 양 끝점을 연결하는 방식으로 구현해서는 안 된다.
+
+## 10.2 경로 탐색 알고리즘
+
+초기 구현:
+
+- Dijkstra Algorithm
+- A\* Search
+
+추가적으로 다음을 검토한다.
+
+- Bidirectional Search
+- Contraction Hierarchies
+- ALT Algorithm
+- Hierarchical Routing
+
+## 10.3 경로 계산 기준
+
+- 최단 거리
+- 예상 이동 시간
+- 도로 유형
+- 도로 연결 관계
+- 일방통행
+- 접근 제한
+- 회전 제한
+
+## 10.4 경로 표현
+
+경로 결과는 다음 정보를 포함한다.
+
+- 출발 좌표
+- 도착 좌표
+- 전체 거리
+- 경로 Geometry
+- 경유 지점
+- 예상 이동 시간
+- 구간별 도로 정보
+- 회전 안내 정보
+
+## 10.5 내비게이션 안내
+
+자체 경로 분석 결과를 이용해 다음과 같은 안내 문장을 생성한다.
+
+- 직진
+- 좌회전
+- 우회전
+- 유턴
+- 도로 진입
+- 교차로 통과
+- 목적지 도착
+
+실제 교통 상황이나 실시간 교통량을 인터넷 없이 자동으로 확보할 수 있다고 가정하지 않는다.
+
+---
+
+# 11\. Geocoding Engine
+
+주소와 좌표 사이의 변환 시스템을 구현한다.
+
+## 11.1 Forward Geocoding
+
+주소 문자열을 분석하여 좌표를 반환한다.
+
+예시:
+
+대한민국
+→ 충청남도
+→ 천안시
+→ 서북구
+→ 성정동
+→ 도로명 및 건물 번호
+
+## 11.2 Reverse Geocoding
+
+위도와 경도를 입력받아 해당 위치에 대응하는 주소 및 행정구역 정보를 반환한다.
+
+## 11.3 주소 데이터 모델
+
+- Country
+- Province
+- City
+- District
+- Neighborhood
+- Road Name
+- Building Number
+- Postal Code
+- Coordinate
+
+주소 검색은 사전에 구축된 로컬 데이터베이스만 사용한다.
+
+---
+
+# 12\. Offline-First Architecture
+
+이 프로젝트의 필수 조건이다.
+
+애플리케이션은 네트워크 연결이 없어도 모든 핵심 기능을 사용할 수 있어야 한다.
+
+## 12.1 오프라인 실행
+
+다음 조건을 만족해야 한다.
+
+- 최초 실행 시 인터넷 연결 불필요
+- 지도 데이터 로컬 로딩
+- 지도 렌더링 로컬 처리
+- 장소 검색 로컬 처리
+- 주소 검색 로컬 처리
+- 경로 탐색 로컬 처리
+- 사용자 설정 로컬 저장
+- 즐겨찾기 로컬 저장
+- GPS 사용 시 인터넷 불필요
+
+GPS 수신은 위성 신호를 이용하며, GPS 하드웨어와 운영체제 지원이 필요하다.
+
+## 12.2 네트워크 독립성
+
+프로그램의 정상적인 실행 과정에서 외부 네트워크 요청이 발생해서는 안 된다.
+
+다음 항목을 검증한다.
+
+- DNS 요청
+- HTTP 요청
+- HTTPS 요청
+- 외부 WebSocket
+- 원격 이미지 요청
+- CDN 리소스 요청
+- 외부 폰트 요청
+- 원격 지도 타일 요청
+
+인터넷이 차단된 환경에서 전체 기능을 테스트한다.
+
+## 12.3 로컬 데이터 관리
+
+사용자는 로컬 지도 데이터의 설치, 삭제, 백업, 복원 및 무결성 검사를 할 수 있어야 한다.
+
+---
+
+# 13\. Terrain Engine
+
+지형 데이터를 처리하고 시각화하는 엔진을 구현한다.
+
+## 13.1 지형 표현
+
+- Elevation Data
+- Digital Elevation Model
+- Contour Line
+- Hillshade
+- Slope
+- Terrain Shading
+- Terrain Mesh
+
+## 13.2 지형 렌더링
+
+높이 데이터를 기반으로 지형 메시를 생성하고 GPU에 전달한다.
+
+추가적으로 다음 기능을 지원할 수 있도록 설계한다.
+
+- 2D Terrain
+- 2.5D Terrain
+- 3D Terrain
+- Elevation Visualization
+
+지형 데이터가 없는 지역은 임의의 실제 지형을 만들어내지 않는다.
+
+---
+
+# 14\. Label \& Symbol Engine
+
+지도에 표시되는 지명과 시설물 명칭을 처리한다.
+
+## 14.1 라벨 배치
+
+- Collision Detection
+- Text Priority
+- Label Placement
+- Label Suppression
+- Dynamic Label Scaling
+- Viewport-aware Placement
+
+## 14.2 라벨 우선순위
+
+예시:
+
+1. 국가명
+2. 광역 행정구역
+3. 주요 도시
+4. 행정구역
+5. 주요 도로
+6. 시설물
+7. 일반 장소
+
+## 14.3 텍스트 렌더링
+
+한글, 영문, 숫자 및 다양한 유니코드 문자를 지원한다.
+
+한글 글꼴의 자소 결합과 글리프 처리에 문제가 없어야 한다.
+
+---
+
+# 15\. Map Interaction Engine
+
+사용자의 지도 조작을 담당한다.
+
+필수 기능:
+
+- 마우스 드래그
+- 휠 확대 및 축소
+- 더블 클릭 확대
+- 화면 중앙 이동
+- 현재 위치로 이동
+- 특정 좌표 이동
+- 지도 회전
+- 기울기 조절
+- 북쪽 방향 초기화
+- 확대 단계 제어
+
+모든 입력은 지도 엔진의 카메라 및 Viewport 시스템과 연결한다.
+
+## 15.1 Camera System
+
+다음 상태를 관리한다.
+
+- Camera Position
+- Zoom Level
+- Bearing
+- Pitch
+- Viewport Bounds
+- Projection Matrix
+- View Matrix
+
+부드러운 애니메이션과 카메라 이동을 지원한다.
+
+---
+
+# 16\. UI/UX 설계
+
+Koharu Maps는 전문적인 지도 소프트웨어이면서 일반 사용자도 쉽게 사용할 수 있는 인터페이스를 제공해야 한다.
+
+디자인 원칙:
+
+- 미니멀리즘
+- 높은 정보 밀도
+- 명확한 시각적 계층
+- 직관적인 지도 조작
+- 불필요한 장식 배제
+- 빠른 반응성
+- 일관된 디자인 시스템
+
+## 16.1 메인 화면
+
+구성:
+
+- 전체 지도 Viewport
+- 상단 검색창
+- 좌측 메뉴
+- 현재 위치 버튼
+- 확대 및 축소 버튼
+- 레이어 설정
+- 경로 탐색 패널
+- 축척 표시
+- 좌표 표시
+- 지도 상태 표시
+
+## 16.2 검색 인터페이스
+
+검색 결과에는 다음을 표시한다.
+
+- 장소 이름
+- 주소
+- 행정구역
+- 좌표
+- 장소 유형
+
+검색 결과를 선택하면 해당 위치로 지도를 이동시킨다.
+
+## 16.3 지도 테마
+
+기본 테마는 밝은 지도 테마로 설정한다.
+
+다크 테마도 지원한다.
+
+지도 배경, 도로, 건물, 수계, 라벨의 색상을 각각 관리한다.
+
+---
+
+# 17\. Performance Engineering
+
+전국 단위 지도 데이터를 처리할 수 있도록 성능을 최적화한다.
+
+## 17.1 메모리 관리
+
+- Memory Pool
+- Object Reuse
+- Zero-Copy Access
+- Lazy Loading
+- Memory-Mapped I/O
+- Cache Eviction
+
+## 17.2 CPU 최적화
+
+- Multithreading
+- SIMD
+- Parallel Data Processing
+- Background Loading
+- Asynchronous Parsing
+
+## 17.3 GPU 최적화
+
+- Geometry Batching
+- Instanced Rendering
+- Buffer Reuse
+- Shader Optimization
+- Draw Call Minimization
+
+## 17.4 데이터 로딩
+
+지도 전체 데이터를 메모리에 한 번에 적재하지 않는다.
+
+현재 Viewport와 인접 영역에 필요한 데이터만 선택적으로 로딩한다.
+
+---
+
+# 18\. 데이터 무결성 및 안정성
+
+다음 기능을 구현한다.
+
+- Binary Header Validation
+- Version Compatibility
+- Checksum Validation
+- Corrupted Data Detection
+- Atomic File Write
+- Transactional Metadata Update
+- Recovery Mechanism
+- Invalid Geometry Detection
+
+잘못된 지도 데이터가 들어오더라도 전체 프로그램이 비정상 종료되지 않도록 처리한다.
+
+---
+
+# 19\. 개발 단계
+
+프로젝트를 다음 단계로 나누어 개발한다.
+
+## Phase 1 — Core Foundation
+
+- 프로젝트 구조 구축
+- 빌드 시스템 구축
+- 좌표계 구현
+- 좌표 변환 구현
+- 기본 Geometry 모델 구현
+- 기본 지도 화면 구현
+
+완료 기준: 빈 지도 화면에서 좌표 기반 객체를 정확하게 표시할 수 있어야 한다.
+
+## Phase 2 — Rendering Engine
+
+- GPU 렌더링
+- 벡터 도형 렌더링
+- 도로 렌더링
+- 건물 렌더링
+- 지도 레이어
+- 확대 및 축소
+- 화면 이동
+
+완료 기준: 로컬 벡터 데이터를 실제 지도처럼 렌더링할 수 있어야 한다.
+
+## Phase 3 — Geographic Data
+
+- 데이터 파서
+- 데이터 정규화
+- 공간 데이터 저장
+- 공간 인덱스
+- 지도 데이터 검증
+- 타일 데이터 생성
+
+완료 기준: 실제 지리정보 데이터를 내부 포맷으로 변환하고 렌더링할 수 있어야 한다.
+
+## Phase 4 — Spatial Search
+
+- 장소 검색
+- 주소 검색
+- 공간 질의
+- 근접 검색
+- Reverse Geocoding
+
+완료 기준: 인터넷 없이 로컬 지리정보를 검색할 수 있어야 한다.
+
+## Phase 5 — Navigation
+
+- Road Graph
+- A\* 알고리즘
+- Dijkstra 알고리즘
+- 경로 Geometry 생성
+- 거리 계산
+- 회전 안내
+
+완료 기준: 실제 도로 연결 데이터를 이용해 출발지에서 목적지까지 경로를 계산할 수 있어야 한다.
+
+## Phase 6 — Offline System
+
+- 로컬 지도 데이터 패키지
+- 데이터 관리
+- 오프라인 검색
+- 오프라인 경로 탐색
+- 네트워크 의존성 제거
+- 완전 오프라인 테스트
+
+완료 기준: 네트워크 어댑터를 비활성화한 상태에서 모든 핵심 기능이 정상 작동해야 한다.
+
+## Phase 7 — Optimization
+
+- 렌더링 최적화
+- 메모리 최적화
+- CPU 최적화
+- GPU 최적화
+- 대용량 데이터 테스트
+- 안정성 테스트
+
+완료 기준: 대규모 지도 데이터에서 안정적으로 작동해야 한다.
+
+## Phase 8 — Final Release
+
+- 사용자 인터페이스 완성
+- 설정 시스템
+- 데이터 관리 시스템
+- 오류 처리
+- 문서화
+- 설치 프로그램
+- 배포 패키지
+
+---
+
+# 20\. 테스트 및 검증
+
+모든 기능은 실제 테스트를 통해 검증한다.
+
+필수 테스트:
+
+1. 좌표 변환 정확도 테스트
+2. 지도 투영 테스트
+3. Geometry 연산 테스트
+4. 공간 인덱스 테스트
+5. 지도 렌더링 테스트
+6. 타일 로딩 테스트
+7. 검색 정확도 테스트
+8. 경로 탐색 정확도 테스트
+9. 데이터 무결성 테스트
+10. 메모리 누수 테스트
+11. 장시간 실행 테스트
+12. 네트워크 차단 테스트
+
+특히 오프라인 테스트는 선택 사항이 아니다.
+
+실제 네트워크 연결을 차단한 상태에서 실행하고 외부 통신이 없음을 검증한다.
+
+---
+
+# 21\. 개발 및 코드 작성 규칙
+
+다음 규칙을 반드시 준수한다.
+
+- 실제 작동하는 코드만 작성한다.
+- 가짜 기능을 만들지 않는다.
+- Placeholder를 사용하지 않는다.
+- TODO로 핵심 기능을 미루지 않는다.
+- 존재하지 않는 라이브러리 API를 사용하지 않는다.
+- 임의의 데이터로 실제 지도처럼 보이게 만드는 행위를 금지한다.
+- 구현하지 않은 기능을 완성했다고 보고하지 않는다.
+- 예외 처리를 누락하지 않는다.
+- 모듈 간 결합도를 최소화한다.
+- 명확한 자료형을 사용한다.
+- 메모리 및 리소스 수명을 명시적으로 관리한다.
+- 알고리즘의 시간 및 공간 복잡도를 고려한다.
+- 핵심 알고리즘은 단위 테스트를 작성한다.
+- 코드 중복을 최소화한다.
+- 기존 프로젝트 구조를 존중한다.
+- 기존 기능을 임의로 삭제하지 않는다.
+- 빌드 오류를 남겨두지 않는다.
+
+기능 구현이 완료되면 실제 실행 및 테스트 결과를 확인한다.
+
+---
+
+# 22\. 최종 목표
+
+Koharu Maps는 다음 조건을 충족하는 독립형 지도 소프트웨어로 완성되어야 한다.
+
+| 항목 | 목표 |
+| --- | --- |
+| 지도 렌더링 | 자체 엔진 |
+| 지도 데이터 처리 | 자체 구현 |
+| 좌표 변환 | 자체 구현 |
+| Geometry Engine | 자체 구현 |
+| 공간 인덱싱 | 자체 구현 |
+| 검색 엔진 | 자체 구현 |
+| 경로 탐색 | 자체 구현 |
+| 지오코딩 | 자체 구현 |
+| 타일 시스템 | 자체 구현 |
+| 지도 저장 포맷 | 자체 설계 |
+| 외부 지도 API | 사용하지 않음 |
+| 외부 지도 SDK | 사용하지 않음 |
+| 런타임 CDN | 사용하지 않음 |
+| 인터넷 연결 | 불필요 |
+| 오프라인 실행 | 필수 |
+
+궁극적으로 Koharu Maps는 외부 지도 서비스가 중단되거나 인터넷 연결이 완전히 사라지더라도 로컬에 저장된 지리정보만으로 지도 탐색, 장소 검색, 경로 탐색 및 지도 렌더링을 수행할 수 있어야 한다.
+
+**Koharu Maps는 기존 지도 서비스를 사용하는 애플리케이션이 아니라 독립적인 지도 엔진을 보유한 GIS 소프트웨어여야 한다.**
+
+---
+
+# 23\. 첫 번째 작업 지시
+
+지금부터 프로젝트 개발을 시작한다.
+
+첫 작업에서는 다음 사항을 수행한다.
+
+1. 현재 개발 환경 및 프로젝트 구조 분석
+2. 요구사항과 기술적 제약 검토
+3. 최적의 기술 스택 확정
+4. 전체 시스템 아키텍처 설계
+5. 모듈별 책임과 인터페이스 정의
+6. 데이터 구조 설계
+7. 빌드 시스템 구축
+8. 최소 실행 가능한 지도 렌더링 코어 구현
+
+단순한 계획서만 작성하고 종료하지 않는다.
+
+실제 프로젝트 파일을 생성하고 첫 번째 실행 가능한 구현물을 완성한다.
+
+이후 각 Phase를 순차적으로 진행하며 매 단계마다 빌드, 실행, 테스트를 수행한다.
+
+기능의 완성도와 데이터의 정확성을 최우선으로 한다.
+
+24. 추가사항
+
+이 프로젝트는 무료로 API 서비스를 제공해야한다.
+
+API 문서도 제작해야하고, API 발급 시스템도 구축해야하며, 이 서비스에서 지도 보거나 검색은 가능한데, 즐겨찾기 같은거 서비스 이용 시 회원가입/로그인 창이 출력되야한다.
+
+소셜 로그인도 지원해야한다. (구글/디스코드/깃허브 이 세개는 값들을 내가 .env에 넣을거니까 준비해놓아야 한다.)

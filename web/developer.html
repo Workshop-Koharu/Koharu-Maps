@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Koharu Maps — 개발자 포털 & 무료 API 발급</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="/static/css/developer.css">
+</head>
+<body data-theme="light">
+  <div class="dev-container">
+    <header class="dev-header">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div>
+          <h1> Koharu Maps Developer Portal</h1>
+          <p>완전 독립형 GIS & 카토그래픽 엔진 기반의 무료 Open API 서비스</p>
+        </div>
+        <a href="/" class="btn btn-outline" style="text-decoration: none;">← 지도로 돌아가기</a>
+      </div>
+      <div class="dev-nav-links">
+        <a href="/docs" target="_blank" class="btn btn-outline btn-sm"> OpenAPI Swagger 문서</a>
+        <a href="/api-docs" class="btn btn-outline btn-sm"> 대화형 API 명세서</a>
+      </div>
+    </header>
+
+    <!-- Auth Prompt if not logged in -->
+    <div id="dev-auth-prompt" class="dev-section" style="text-align: center; padding: 40px 20px;">
+      <h2>로그인이 필요합니다</h2>
+      <p>무료 API 키를 발급받고 사용량을 관리하려면 Koharu Maps 계정으로 로그인해주세요.</p>
+      <a href="/" class="btn btn-primary" style="display: inline-block; text-decoration: none;">지도로 가서 로그인하기</a>
+    </div>
+
+    <!-- Developer Dashboard -->
+    <div id="dev-dashboard" style="display: none;">
+      <!-- Key Issuance Form -->
+      <section class="dev-section">
+        <h2> 무료 API 키 발급</h2>
+        <p>신규 프로젝트나 서비스에서 호출할 수 있는 독립형 API 키를 무료로 생성합니다. 상업적/비상업적 용도 제한 없이 사용할 수 있습니다.</p>
+        <form id="create-key-form" style="display: flex; gap: 10px; max-width: 500px;">
+          <input type="text" id="new-key-name" placeholder="API 키 이름 (예: 내 웹앱 서비스)" required style="flex: 1; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+          <button type="submit" class="btn btn-primary" style="white-space: nowrap;">새 API 키 생성</button>
+        </form>
+      </section>
+
+      <!-- API Key List Table -->
+      <section class="dev-section">
+        <h2> 내 API 키 목록</h2>
+        <table class="api-keys-table">
+          <thead>
+            <tr>
+              <th>이름</th>
+              <th>API 키 (토큰)</th>
+              <th>상태</th>
+              <th>누적 호출 수</th>
+              <th>발급일</th>
+              <th>관리</th>
+            </tr>
+          </thead>
+          <tbody id="api-keys-tbody">
+            <tr><td colspan="6" class="text-center">불러오는 중...</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Live API Tester -->
+      <section class="dev-section">
+        <h2> 실시간 대화형 API 테스트</h2>
+        <p>브라우저에서 직접 파라미터를 입력하고 응답 결과를 확인해보세요.</p>
+        <div class="tester-grid">
+          <div class="tester-controls">
+            <label style="font-size: 12px; font-weight: bold;">엔드포인트 선택</label>
+            <select id="test-endpoint-select">
+              <option value="/api/v1/search?q=강남역">장소 검색: /api/v1/search?q=강남역</option>
+              <option value="/api/v1/search?q=세종대로">주소 검색: /api/v1/search?q=세종대로</option>
+              <option value="/api/v1/reverse-geocode?lon=126.9784&lat=37.5663">역지오코딩: /api/v1/reverse-geocode (서울시청)</option>
+              <option value="/api/v1/route?start=126.9768,37.5750&target=127.0280,37.4980">길찾기: 광화문 -> 강남역 (A* 최단시간)</option>
+              <option value="/api/v1/features?bbox=126.95,37.54,127.05,37.58">공간 질의: /api/v1/features (서울 도심)</option>
+              <option value="/api/v1/metadata">메타데이터: /api/v1/metadata</option>
+            </select>
+
+            <label style="font-size: 12px; font-weight: bold;">X-API-Key 헤더 (선택)</label>
+            <input type="text" id="test-api-key" placeholder="kmap_live_...">
+
+            <button id="btn-test-api" class="btn btn-primary" style="margin-top: 6px;">API 호출 실행</button>
+          </div>
+
+          <div>
+            <label style="font-size: 12px; font-weight: bold;">응답 결과 (JSON)</label>
+            <pre id="test-result-output" class="tester-output">// 호출 결과가 여기에 표시됩니다.</pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- Quick Integration Code Snippets -->
+      <section class="dev-section">
+        <h2> 간편 연동 코드 예제</h2>
+        <div style="font-size: 13px; font-weight: bold; margin-top: 8px;">cURL</div>
+        <pre class="code-box">curl -X GET "http://localhost:8000/api/v1/search?q=강남역" \
+     -H "X-API-Key: YOUR_API_KEY"</pre>
+
+        <div style="font-size: 13px; font-weight: bold; margin-top: 14px;">Python (httpx / requests)</div>
+        <pre class="code-box">import requests
+
+url = "http://localhost:8000/api/v1/route"
+params = {
+    "start": "126.9768,37.5750",  # 광화문
+    "target": "127.0280,37.4980", # 강남역
+    "algorithm": "a_star"
+}
+headers = {"X-API-Key": "YOUR_API_KEY"}
+
+response = requests.get(url, params=params, headers=headers)
+print(response.json())</pre>
+
+        <div style="font-size: 13px; font-weight: bold; margin-top: 14px;">JavaScript (Fetch API)</div>
+        <pre class="code-box">const response = await fetch('/api/v1/search?q=광화문', {
+  headers: { 'X-API-Key': 'YOUR_API_KEY' }
+});
+const data = await response.json();
+console.log(data.results);</pre>
+      </section>
+    </div>
+  </div>
+
+  <script src="/static/js/developer.js"></script>
+</body>
+</html>

@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Koharu Maps — API 문서 & 명세서</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="/static/css/developer.css">
+  <style>
+    .endpoint-card {
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      margin-bottom: 18px;
+      overflow: hidden;
+      background: var(--bg-surface);
+    }
+    .endpoint-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 18px;
+      background: var(--bg-primary);
+      border-bottom: 1px solid var(--border-color);
+    }
+    .method-get {
+      background: #10b981;
+      color: #fff;
+      font-weight: bold;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+    .method-post {
+      background: #3b82f6;
+      color: #fff;
+      font-weight: bold;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+    .method-delete {
+      background: #ef4444;
+      color: #fff;
+      font-weight: bold;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+    .endpoint-path {
+      font-family: monospace;
+      font-weight: 700;
+      font-size: 14px;
+    }
+    .endpoint-desc {
+      color: var(--text-secondary);
+      font-size: 12px;
+    }
+    .endpoint-body {
+      padding: 16px 18px;
+    }
+    .params-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin: 10px 0;
+    }
+    .params-table th, .params-table td {
+      border: 1px solid var(--border-color);
+      padding: 8px 10px;
+      text-align: left;
+    }
+    .params-table th {
+      background: var(--bg-primary);
+    }
+  </style>
+</head>
+<body data-theme="light">
+  <div class="dev-container">
+    <header class="dev-header">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div>
+          <h1> Koharu Maps REST API Specification</h1>
+          <p>Zero-Dependency Standalone GIS & Cartographic Platform Open API</p>
+        </div>
+        <a href="/" class="btn btn-outline" style="text-decoration: none;">← 메인 지도로 돌아가기</a>
+      </div>
+      <div class="dev-nav-links">
+        <a href="/developer" class="btn btn-outline btn-sm"> 무료 API 키 발급</a>
+        <a href="/docs" target="_blank" class="btn btn-outline btn-sm"> Swagger UI</a>
+      </div>
+    </header>
+
+    <!-- Overview Section -->
+    <section class="dev-section">
+      <h2> 개요</h2>
+      <p>
+        Koharu Maps API는 외부 상용 지도 서비스(Google, Naver, Kakao, Mapbox 등)에 의존하지 않고,
+        순수 자체 구현된 수학적 좌표계 변환, R-Tree/QuadTree 공간 인덱스, A* 도로망 그래프 라우팅 엔진,
+        역색인 지오코딩 엔진을 통해 모든 지리정보 연산을 제공하는 독립형 RESTful API 서비스입니다.
+      </p>
+      <div style="background: var(--accent-light); padding: 12px 16px; border-radius: var(--radius-md); font-size: 13px;">
+         <strong>인증 방식:</strong> API 요청 시 헤더 <code>X-API-Key: YOUR_API_KEY</code> 또는 쿼리 파라미터 <code>?api_key=YOUR_API_KEY</code>를 전달할 수 있습니다. 무료 키 없이도 기본 호출이 가능합니다.
+      </div>
+    </section>
+
+    <!-- 1. Search & Geocoding -->
+    <section class="dev-section">
+      <h2>1. 장소 검색 및 지오코딩 (Search & Geocoding)</h2>
+
+      <!-- /api/v1/search -->
+      <div class="endpoint-card">
+        <div class="endpoint-header">
+          <span class="method-get">GET</span>
+          <span class="endpoint-path">/api/v1/search</span>
+          <span class="endpoint-desc">장소 및 주소 Forward 검색</span>
+        </div>
+        <div class="endpoint-body">
+          <p>한글 및 영문 명칭, 주소, 도로명 검색어를 분석하여 좌표 및 매칭 점수가 포함된 장소 목록을 반환합니다.</p>
+          <table class="params-table">
+            <thead>
+              <tr><th>파라미터</th><th>타입</th><th>필수</th><th>설명</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>q</td><td>string</td><td>예</td><td>검색 키워드 (예: "강남역", "광화문", "세종대로")</td></tr>
+              <tr><td>limit</td><td>int</td><td>아니오</td><td>결과 최대 개수 (기본값: 10)</td></tr>
+              <tr><td>center_lon</td><td>float</td><td>아니오</td><td>현재 뷰포트 중심 경도 (거리 가중치 계산)</td></tr>
+              <tr><td>center_lat</td><td>float</td><td>아니오</td><td>현재 뷰포트 중심 위도 (거리 가중치 계산)</td></tr>
+            </tbody>
+          </table>
+          <div style="font-weight: bold; font-size: 12px; margin-top: 10px;">응답 예시 (JSON):</div>
+          <pre class="code-box">{
+  "status": "success",
+  "query": "강남역",
+  "count": 1,
+  "results": [
+    {
+      "id": "poi_6",
+      "name": "강남역",
+      "category": "교통/상업",
+      "address": "서울특별시 강남구 강남대로 396",
+      "location": { "lon": 127.0280, "lat": 37.4980 },
+      "score": 31.0
+    }
+  ]
+}</pre>
+        </div>
+      </div>
+
+      <!-- /api/v1/reverse-geocode -->
+      <div class="endpoint-card">
+        <div class="endpoint-header">
+          <span class="method-get">GET</span>
+          <span class="endpoint-path">/api/v1/reverse-geocode</span>
+          <span class="endpoint-desc">역지오코딩 (좌표 -> 주소)</span>
+        </div>
+        <div class="endpoint-body">
+          <p>지정된 위도와 경도에서 가장 가까운 도로명 주소 및 행정구역, 랜드마크를 반환합니다.</p>
+          <table class="params-table">
+            <thead>
+              <tr><th>파라미터</th><th>타입</th><th>필수</th><th>설명</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>lon</td><td>float</td><td>예</td><td>경도 (Longitude, WGS84)</td></tr>
+              <tr><td>lat</td><td>float</td><td>예</td><td>위도 (Latitude, WGS84)</td></tr>
+              <tr><td>max_dist_m</td><td>float</td><td>아니오</td><td>최대 허용 탐색 반경 (미터, 기본값: 3000)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Navigation & Routing -->
+    <section class="dev-section">
+      <h2>2. 네비게이션 및 길찾기 (Routing & Navigation)</h2>
+
+      <!-- /api/v1/route -->
+      <div class="endpoint-card">
+        <div class="endpoint-header">
+          <span class="method-get">GET</span>
+          <span class="endpoint-path">/api/v1/route</span>
+          <span class="endpoint-desc">자체 도로망 기반 A* / Dijkstra 경로 탐색</span>
+        </div>
+        <div class="endpoint-body">
+          <p>출발지와 도착지 좌표를 도로망에 스냅한 후, A* 알고리즘을 통해 최단거리 또는 최단시간 경로와 턴바이턴 안내를 계산합니다.</p>
+          <table class="params-table">
+            <thead>
+              <tr><th>파라미터</th><th>타입</th><th>필수</th><th>설명</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>start</td><td>string</td><td>예</td><td>출발 좌표 'lon,lat' (예: "126.9768,37.5750")</td></tr>
+              <tr><td>target</td><td>string</td><td>예</td><td>도착 좌표 'lon,lat' (예: "127.0280,37.4980")</td></tr>
+              <tr><td>algorithm</td><td>string</td><td>아니오</td><td>'a_star' (기본값) 또는 'dijkstra'</td></tr>
+              <tr><td>weight</td><td>string</td><td>아니오</td><td>'time' (예상시간 기준) 또는 'distance' (거리 기준)</td></tr>
+            </tbody>
+          </table>
+          <div style="font-weight: bold; font-size: 12px; margin-top: 10px;">응답 예시 (JSON):</div>
+          <pre class="code-box">{
+  "status": "success",
+  "algorithm": "a_star",
+  "start": { "query": [126.9768, 37.575], "snapped_node_name": "광화문교차로" },
+  "target": { "query": [127.028, 37.498], "snapped_node_name": "강남역사거리" },
+  "route": {
+    "distance_m": 10540.2,
+    "duration_sec": 780.5,
+    "duration_min": 13.0,
+    "coordinates": [[126.9768, 37.575], [126.977, 37.566], ...],
+    "instructions": [
+      { "type": "depart", "message": "세종대로(으)로 출발합니다.", "distance_m": 1000.5 },
+      { "type": "turn-right", "message": "강남대로 방면으로 우회전입니다.", "distance_m": 1500.0 },
+      { "type": "arrive", "message": "목적지에 도착했습니다." }
+    ]
+  }
+}</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. Vector Tiles & Spatial Features -->
+    <section class="dev-section">
+      <h2>3. 벡터 타일 및 공간 피처 (Tiles & Features)</h2>
+
+      <!-- /api/v1/tile/{z}/{x}/{y} -->
+      <div class="endpoint-card">
+        <div class="endpoint-header">
+          <span class="method-get">GET</span>
+          <span class="endpoint-path">/api/v1/tile/{z}/{x}/{y}</span>
+          <span class="endpoint-desc">타일 단위 정규화 벡터 피처 서빙</span>
+        </div>
+        <div class="endpoint-body">
+          <p>표준 타일 피라미드 좌표 (z, x, y) 경계로 클리핑된 레이어별 기하 객체를 반환합니다.</p>
+        </div>
+      </div>
+
+      <!-- /api/v1/features -->
+      <div class="endpoint-card">
+        <div class="endpoint-header">
+          <span class="method-get">GET</span>
+          <span class="endpoint-path">/api/v1/features</span>
+          <span class="endpoint-desc">바운딩 박스 공간 질의 (Spatial Query)</span>
+        </div>
+        <div class="endpoint-body">
+          <p>R-Tree/QuadTree 공간 인덱스를 통해 지정된 BoundingBox 범위 내의 모든 지리 객체를 조회합니다.</p>
+          <table class="params-table">
+            <thead>
+              <tr><th>파라미터</th><th>타입</th><th>필수</th><th>설명</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>bbox</td><td>string</td><td>아니오</td><td>"min_lon,min_lat,max_lon,max_lat" (기본: 서울 수도권)</td></tr>
+              <tr><td>zoom</td><td>int</td><td>아니오</td><td>LOD 필터링용 줌 레벨 (0~24)</td></tr>
+              <tr><td>limit</td><td>int</td><td>아니오</td><td>최대 반환 개수 (기본값: 500)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- /api/v1/export/kmap -->
+      <div class="endpoint-card">
+        <div class="endpoint-header">
+          <span class="method-get">GET</span>
+          <span class="endpoint-path">/api/v1/export/kmap</span>
+          <span class="endpoint-desc">독립형 KMAP 바이너리 아카이브 패키지 다운로드</span>
+        </div>
+        <div class="endpoint-body">
+          <p>SHA256 무결성 검증 헤더가 포함된 자체 오프라인 <code>.kmap</code> 바이너리 파일을 다운로드합니다.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. API Keys & Auth -->
+    <section class="dev-section">
+      <h2>4. API 키 및 인증 (API Keys & Auth)</h2>
+      <div class="endpoint-card">
+        <div class="endpoint-header">
+          <span class="method-post">POST</span>
+          <span class="endpoint-path">/api/keys</span>
+          <span class="endpoint-desc">무료 API 키 발급 (JWT Bearer 인증 필요)</span>
+        </div>
+      </div>
+      <div class="endpoint-card">
+        <div class="endpoint-header">
+          <span class="method-get">GET</span>
+          <span class="endpoint-path">/api/keys</span>
+          <span class="endpoint-desc">발급된 API 키 목록 및 사용량 조회</span>
+        </div>
+      </div>
+      <div class="endpoint-card">
+        <div class="endpoint-header">
+          <span class="method-delete">DELETE</span>
+          <span class="endpoint-path">/api/keys/{key_id}</span>
+          <span class="endpoint-desc">API 키 삭제</span>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>
