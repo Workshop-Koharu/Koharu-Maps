@@ -21,6 +21,7 @@ export default function DeveloperPage() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [snippetLang, setSnippetLang] = useState<'curl' | 'js' | 'python' | 'sdk'>('curl');
 
   // Live Tester
   const [selectedEndpoint, setSelectedEndpoint] = useState('/api/v1/search?q=강남역');
@@ -326,33 +327,118 @@ export default function DeveloperPage() {
             padding: 24,
             boxShadow: 'var(--shadow-sm)',
           }}>
-            <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Code2 size={18} color="var(--accent)" />
-              <span>클라이언트 SDK 및 코드 예제</span>
-            </h2>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
+              <h2 style={{ fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+                <Code2 size={18} color="var(--accent)" />
+                <span>클라이언트 SDK 및 코드 예제</span>
+              </h2>
+              <Link href="/api-docs" className="btn btn-outline btn-sm">
+                <FileText size={13} />
+                <span>전체 API 상세 명세서 보기 &rarr;</span>
+              </Link>
+            </div>
 
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>1. 독립형 HTML 브라우저 연동 SDK</div>
-            <pre style={{ background: '#090d16', color: '#f1f5f9', padding: 14, borderRadius: 'var(--radius-md)', fontSize: 12, fontFamily: 'monospace', overflowX: 'auto' }}>
-{`<script src="https://map.koharu.live/sdk/koharu-maps.js"></script>
+            {/* Language Tabs */}
+            <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+              {(['curl', 'js', 'python', 'sdk'] as const).map(lang => (
+                <button
+                  key={lang}
+                  type="button"
+                  onClick={() => setSnippetLang(lang)}
+                  style={{
+                    background: snippetLang === lang ? 'var(--accent)' : 'var(--bg-primary)',
+                    color: snippetLang === lang ? '#ffffff' : 'var(--text-secondary)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: 4,
+                    padding: '4px 10px',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {lang === 'curl' ? 'cURL' : lang === 'js' ? 'JavaScript / Fetch' : lang === 'python' ? 'Python (requests)' : 'Maps Web SDK'}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ position: 'relative' }}>
+              <pre style={{
+                background: '#090d16',
+                color: '#f1f5f9',
+                padding: 16,
+                borderRadius: 'var(--radius-md)',
+                fontSize: 12,
+                fontFamily: 'monospace',
+                overflowX: 'auto',
+                border: '1px solid var(--border-color)',
+                margin: 0,
+              }}>
+                {snippetLang === 'curl' && `curl -X GET "https://map.koharu.live/api/v1/search?q=광화문&limit=5" \\
+  -H "X-API-Key: ${testApiKey || 'YOUR_API_KEY'}"`}
+
+                {snippetLang === 'js' && `// JavaScript (Fetch API) / TypeScript
+const res = await fetch('https://map.koharu.live/api/v1/search?q=광화문&limit=5', {
+  headers: {
+    'X-API-Key': '${testApiKey || 'YOUR_API_KEY'}'
+  }
+});
+const data = await res.json();
+console.log(data.results);`}
+
+                {snippetLang === 'python' && `# Python 3 (requests)
+import requests
+
+url = "https://map.koharu.live/api/v1/search"
+params = { "q": "광화문", "limit": 5 }
+headers = { "X-API-Key": "${testApiKey || 'YOUR_API_KEY'}" }
+
+response = requests.get(url, params=params, headers=headers)
+print(response.json()["results"])`}
+
+                {snippetLang === 'sdk' && `<!-- HTML Standalone SDK -->
+<script src="https://map.koharu.live/sdk/koharu-maps.js"></script>
 <div id="map" style="width: 100%; height: 500px;"></div>
 <script>
   const map = new KoharuMap({
     container: 'map',
     center: [126.9784, 37.5663],
     zoom: 13,
-    apiKey: 'YOUR_API_KEY'
+    apiKey: '${testApiKey || 'YOUR_API_KEY'}'
   });
 </script>`}
-            </pre>
-
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginTop: 14, marginBottom: 6 }}>2. TypeScript / JavaScript Fetch API</div>
-            <pre style={{ background: '#090d16', color: '#f1f5f9', padding: 14, borderRadius: 'var(--radius-md)', fontSize: 12, fontFamily: 'monospace', overflowX: 'auto' }}>
-{`const res = await fetch('https://map.koharu.live/api/v1/search?q=광화문', {
-  headers: { 'X-API-Key': 'YOUR_API_KEY' }
-});
-const data = await res.json();
-console.log(data.results);`}
-            </pre>
+              </pre>
+              <button
+                onClick={() => {
+                  const text = snippetLang === 'curl'
+                    ? `curl -X GET "https://map.koharu.live/api/v1/search?q=광화문&limit=5" -H "X-API-Key: ${testApiKey || 'YOUR_API_KEY'}"`
+                    : snippetLang === 'js'
+                    ? `const res = await fetch('https://map.koharu.live/api/v1/search?q=광화문&limit=5', { headers: { 'X-API-Key': '${testApiKey || 'YOUR_API_KEY'}' } }); const data = await res.json(); console.log(data.results);`
+                    : snippetLang === 'python'
+                    ? `import requests\nresponse = requests.get("https://map.koharu.live/api/v1/search", params={"q": "광화문", "limit": 5}, headers={"X-API-Key": "${testApiKey || 'YOUR_API_KEY'}"})\nprint(response.json()["results"])`
+                    : `<script src="https://map.koharu.live/sdk/koharu-maps.js"></script>\n<div id="map" style="width: 100%; height: 500px;"></div>\n<script>\n  const map = new KoharuMap({ container: 'map', center: [126.9784, 37.5663], zoom: 13, apiKey: '${testApiKey || 'YOUR_API_KEY'}' });\n</script>`;
+                  handleCopy(text, 'snippet-copy');
+                }}
+                style={{
+                  position: 'absolute',
+                  top: 12,
+                  right: 12,
+                  background: 'rgba(255,255,255,0.08)',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  borderRadius: 4,
+                  color: '#fff',
+                  padding: '4px 8px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  fontSize: 11,
+                }}
+                title="코드 복사"
+              >
+                {copiedId === 'snippet-copy' ? <Check size={12} color="var(--success)" /> : <Copy size={12} />}
+                <span>{copiedId === 'snippet-copy' ? '복사됨' : '복사'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

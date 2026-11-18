@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Plus, Minus, Compass, Layers, Crosshair, Globe, Satellite, Map as MapIcon } from 'lucide-react';
+import { Plus, Minus, Layers, Crosshair, Globe, Satellite, Map as MapIcon } from 'lucide-react';
 import { lonLatToPixel, pixelToLonLat } from '@/lib/gis-engine';
 
 export type LayerMode = 'hybrid' | 'satellite' | 'vector';
@@ -21,13 +21,9 @@ interface MapViewportProps {
 
 const THEMES: Record<string, any> = {
   light: {
-    bg: '#0f172a',
+    bg: '#050811',
     vectorBg: '#f8fafc',
-    water: '#93c5fd',
-    green: '#bbf7d0',
     continent: '#e2e8f0',
-    building: '#cbd5e1',
-    buildingOutline: '#94a3b8',
     roadMotorway: '#f59e0b',
     roadPrimary: '#fbbf24',
     roadSecondary: '#ffffff',
@@ -35,16 +31,11 @@ const THEMES: Record<string, any> = {
     text: '#0f172a',
     textHalo: '#ffffff',
     routeLine: '#2563eb',
-    routeHalo: '#93c5fd',
   },
   dark: {
     bg: '#050811',
     vectorBg: '#090d16',
-    water: '#1e293b',
-    green: '#143022',
     continent: '#1e2532',
-    building: '#2d3748',
-    buildingOutline: '#3d495d',
     roadMotorway: '#f59e0b',
     roadPrimary: '#d97706',
     roadSecondary: '#334155',
@@ -52,7 +43,6 @@ const THEMES: Record<string, any> = {
     text: '#f8fafc',
     textHalo: '#090d16',
     routeLine: '#38bdf8',
-    routeHalo: '#0284c7',
   },
 };
 
@@ -87,14 +77,19 @@ export default function MapViewport({
     }
   };
 
-  // Convert Lon/Lat to screen projection
+  // Convert Lon/Lat to screen projection with horizontal wrap awareness
   const project = useCallback(
     (lon: number, lat: number, width: number, height: number): [number, number] => {
       const cPx = lonLatToPixel(center[0], center[1], zoom);
       const tPx = lonLatToPixel(lon, lat, zoom);
-      let dx = tPx[0] - cPx[0];
-      let dy = tPx[1] - cPx[1];
+      const worldSize = 256 * Math.pow(2, zoom);
 
+      let dx = tPx[0] - cPx[0];
+      // Keep within nearest world copy
+      while (dx > worldSize / 2) dx -= worldSize;
+      while (dx < -worldSize / 2) dx += worldSize;
+
+      let dy = tPx[1] - cPx[1];
       if (pitch > 0) {
         dy = dy * Math.cos((pitch * Math.PI) / 180.0);
       }
@@ -111,7 +106,10 @@ export default function MapViewport({
         dy = dy / Math.cos((pitch * Math.PI) / 180.0);
       }
       const cPx = lonLatToPixel(center[0], center[1], zoom);
-      return pixelToLonLat(cPx[0] + dx, cPx[1] + dy, zoom);
+      const geo = pixelToLonLat(cPx[0] + dx, cPx[1] + dy, zoom);
+      // Normalize longitude to [-180, 180]
+      geo[0] = ((((geo[0] + 180) % 360) + 360) % 360) - 180;
+      return geo;
     },
     [center, zoom, pitch]
   );
@@ -130,7 +128,6 @@ export default function MapViewport({
       },
       () => {
         setIsLocating(false);
-        // Fallback default: Seoul Station
         onCenterChange([126.9707, 37.555], 15);
       },
       { timeout: 7000, enableHighAccuracy: true }
@@ -160,11 +157,11 @@ export default function MapViewport({
     const palette = THEMES[theme] || THEMES.light;
     const isSatelliteOrHybrid = activeMode === 'satellite' || activeMode === 'hybrid';
 
-    // 1. Base Background
+    // 1. Dark Space Background
     ctx.fillStyle = isSatelliteOrHybrid ? '#050811' : palette.vectorBg;
     ctx.fillRect(0, 0, w, h);
 
-    // 2. High-Resolution Satellite Raster Tile Layer
+    // 2. High-Resolution Satellite Raster Tile Layer with Infinite Horizontal Wrap
     if (isSatelliteOrHybrid) {
       const tileZ = Math.min(19, Math.max(0, Math.floor(zoom)));
       const worldSize = 256 * Math.pow(2, zoom);
@@ -173,20 +170,21 @@ export default function MapViewport({
       const numTiles = Math.pow(2, tileZ);
       const tileSizeOnScreen = (1 / numTiles) * worldSize;
 
-      // Find visible tile ranges
+      // Unclamped visible tile range across the whole viewport width
       const minWorldX = cPx[0] - w / 2;
       const maxWorldX = cPx[0] + w / 2;
       let minWorldY = cPx[1] - (pitch > 0 ? h / (2 * Math.cos((pitch * Math.PI) / 180)) : h / 2);
       let maxWorldY = cPx[1] + (pitch > 0 ? h / (2 * Math.cos((pitch * Math.PI) / 180)) : h / 2);
 
-      const minTileX = Math.max(0, Math.floor((minWorldX / worldSize) * numTiles) - 1);
-      const maxTileX = Math.min(numTiles - 1, Math.ceil((maxWorldX / worldSize) * numTiles) + 1);
+      const minTileX = Math.floor((minWorldX / worldSize) * numTiles) - 1;
+      const maxTileX = Math.ceil((maxWorldX / worldSize) * numTiles) + 1;
       const minTileY = Math.max(0, Math.floor((minWorldY / worldSize) * numTiles) - 1);
       const maxTileY = Math.min(numTiles - 1, Math.ceil((maxWorldY / worldSize) * numTiles) + 1);
 
-      let needsRedraw = false;
-
       for (let tx = minTileX; tx <= maxTileX; tx++) {
+        // Infinite Horizontal Modulo Wrap
+        const wrappedTx = ((tx % numTiles) + numTiles) % numTiles;
+
         for (let ty = minTileY; ty <= maxTileY; ty++) {
           const tileWorldPx = (tx / numTiles) * worldSize;
           const tileWorldPy = (ty / numTiles) * worldSize;
@@ -202,32 +200,32 @@ export default function MapViewport({
           const sWidth = tileSizeOnScreen;
           const sHeight = pitch > 0 ? tileSizeOnScreen * Math.cos((pitch * Math.PI) / 180) : tileSizeOnScreen;
 
-          const tileKey = `${tileZ}/${tx}/${ty}`;
+          const tileKey = `${tileZ}/${wrappedTx}/${ty}`;
           const cachedImg = tileCache.get(tileKey);
 
           if (cachedImg && cachedImg.complete && cachedImg.naturalWidth > 0) {
             ctx.drawImage(cachedImg, sx, sy, sWidth + 0.5, sHeight + 0.5);
           } else {
-            // Check parent tile for smooth seamless LOD
+            // Parent LOD interpolation for seamless loading
             if (tileZ > 0) {
               const pZ = tileZ - 1;
-              const pX = Math.floor(tx / 2);
+              const pNum = Math.pow(2, pZ);
+              const pX = ((Math.floor(wrappedTx / 2) % pNum) + pNum) % pNum;
               const pY = Math.floor(ty / 2);
               const parentKey = `${pZ}/${pX}/${pY}`;
               const parentImg = tileCache.get(parentKey);
               if (parentImg && parentImg.complete) {
-                const subX = (tx % 2) * 128;
+                const subX = (wrappedTx % 2) * 128;
                 const subY = (ty % 2) * 128;
                 ctx.drawImage(parentImg, subX, subY, 128, 128, sx, sy, sWidth + 0.5, sHeight + 0.5);
               }
             }
 
-            // Fetch high-res satellite imagery tile
             if (!loadingTiles.has(tileKey)) {
               loadingTiles.add(tileKey);
               const img = new Image();
               img.crossOrigin = 'anonymous';
-              img.src = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${tileZ}/${ty}/${tx}`;
+              img.src = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${tileZ}/${ty}/${wrappedTx}`;
               img.onload = () => {
                 tileCache.set(tileKey, img);
                 loadingTiles.delete(tileKey);
@@ -241,7 +239,7 @@ export default function MapViewport({
         }
       }
     } else {
-      // 2-B. Pure Vector Cartography (Continent Polygons)
+      // Vector Mode (Continents)
       for (const f of features) {
         if (f.layer === 'continent' && f.geometry?.type === 'Polygon') {
           ctx.beginPath();
@@ -257,18 +255,15 @@ export default function MapViewport({
           ctx.closePath();
           ctx.fillStyle = palette.continent;
           ctx.fill();
-          ctx.strokeStyle = palette.roadCasing;
-          ctx.lineWidth = 0.8;
-          ctx.stroke();
         }
       }
     }
 
-    // 3. Roads & Highways (Rendered in Vector & Hybrid mode)
+    // 3. Roads & Highways (Vector & Hybrid mode)
     if (activeMode !== 'satellite') {
       const roadFeatures = features.filter((f) => f.layer === 'road');
 
-      // Road Casing
+      // Casing
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       for (const f of roadFeatures) {
@@ -283,12 +278,12 @@ export default function MapViewport({
           if (i === 0) ctx.moveTo(p[0], p[1]);
           else ctx.lineTo(p[0], p[1]);
         }
-        ctx.strokeStyle = activeMode === 'hybrid' ? 'rgba(0, 0, 0, 0.7)' : palette.roadCasing;
+        ctx.strokeStyle = activeMode === 'hybrid' ? 'rgba(0, 0, 0, 0.75)' : palette.roadCasing;
         ctx.lineWidth = baseWidth + 2;
         ctx.stroke();
       }
 
-      // Road Inner Fill
+      // Inner
       for (const f of roadFeatures) {
         const coords = f.geometry?.coordinates;
         if (!coords || coords.length < 2) continue;
@@ -301,32 +296,24 @@ export default function MapViewport({
           if (i === 0) ctx.moveTo(p[0], p[1]);
           else ctx.lineTo(p[0], p[1]);
         }
-        if (activeMode === 'hybrid') {
-          ctx.strokeStyle = kind === 'motorway' ? '#fbbf24' : '#ffffff';
-        } else {
-          ctx.strokeStyle = kind === 'motorway' ? palette.roadMotorway : palette.roadSecondary;
-        }
+        ctx.strokeStyle = activeMode === 'hybrid' ? (kind === 'motorway' ? '#fbbf24' : '#ffffff') : palette.roadPrimary;
         ctx.lineWidth = baseWidth;
         ctx.stroke();
       }
     }
 
-    // 4. Active Navigation Route Path with High-Visibility Glow
+    // 4. Navigation Route Line
     if (route && route.path && route.path.length >= 2) {
-      // Glow Outer Halo
       ctx.beginPath();
       for (let i = 0; i < route.path.length; i++) {
         const p = project(route.path[i][0], route.path[i][1], w, h);
         if (i === 0) ctx.moveTo(p[0], p[1]);
         else ctx.lineTo(p[0], p[1]);
       }
-      ctx.strokeStyle = 'rgba(37, 99, 235, 0.45)';
+      ctx.strokeStyle = 'rgba(37, 99, 235, 0.4)';
       ctx.lineWidth = 14;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
       ctx.stroke();
 
-      // Main Route Line
       ctx.beginPath();
       for (let i = 0; i < route.path.length; i++) {
         const p = project(route.path[i][0], route.path[i][1], w, h);
@@ -337,7 +324,6 @@ export default function MapViewport({
       ctx.lineWidth = 7;
       ctx.stroke();
 
-      // Core Highlight
       ctx.beginPath();
       for (let i = 0; i < route.path.length; i++) {
         const p = project(route.path[i][0], route.path[i][1], w, h);
@@ -349,19 +335,12 @@ export default function MapViewport({
       ctx.stroke();
     }
 
-    // 5. Markers & Pins
+    // 5. Markers
     for (const m of markers) {
       const p = project(m.lon, m.lat, w, h);
       if (p[0] < -40 || p[0] > w + 40 || p[1] < -40 || p[1] > h + 40) continue;
 
       ctx.save();
-      // Drop Shadow
-      ctx.beginPath();
-      ctx.ellipse(p[0], p[1] + 2, 7, 3, 0, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
-      ctx.fill();
-
-      // Outer Pin Circle
       ctx.beginPath();
       ctx.arc(p[0], p[1] - 14, 11, 0, Math.PI * 2);
       ctx.fillStyle = m.color || '#2563eb';
@@ -370,15 +349,13 @@ export default function MapViewport({
       ctx.strokeStyle = '#ffffff';
       ctx.stroke();
 
-      // Inner White Dot
       ctx.beginPath();
       ctx.arc(p[0], p[1] - 14, 4, 0, Math.PI * 2);
       ctx.fillStyle = '#ffffff';
       ctx.fill();
 
-      // Marker Label
       if (m.title) {
-        ctx.font = '700 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.font = '700 12px sans-serif';
         ctx.textAlign = 'center';
         ctx.strokeStyle = 'rgba(0, 0, 0, 0.85)';
         ctx.lineWidth = 3.5;
@@ -389,38 +366,67 @@ export default function MapViewport({
       ctx.restore();
     }
 
-    // 6. Place Labels with Smart Anti-Collision
-    if (zoom >= 3) {
-      const labelBoxes: { minX: number; maxX: number; minY: number; maxY: number }[] = [];
-      const placeFeatures = features.filter((f) => f.layer === 'place');
+    // 6. Hierarchical Labels by Zoom
+    const labelBoxes: { minX: number; maxX: number; minY: number; maxY: number }[] = [];
 
-      for (const f of placeFeatures) {
-        const name = f.properties?.name;
-        if (!name) continue;
-        const p = project(f.coordinates[0], f.coordinates[1], w, h);
-        if (p[0] < -40 || p[0] > w + 40 || p[1] < -40 || p[1] > h + 40) continue;
-
-        ctx.font = zoom >= 13 ? '700 12px sans-serif' : '600 11px sans-serif';
-        const tw = ctx.measureText(name).width;
-        const bbox = { minX: p[0] - tw / 2 - 6, maxX: p[0] + tw / 2 + 6, minY: p[1] - 8, maxY: p[1] + 16 };
-
-        let collision = false;
-        for (const b of labelBoxes) {
-          if (!(bbox.maxX < b.minX || bbox.minX > b.maxX || bbox.maxY < b.minY || bbox.minY > b.maxY)) {
-            collision = true;
-            break;
-          }
-        }
-        if (collision) continue;
-        labelBoxes.push(bbox);
-
-        ctx.textAlign = 'center';
-        ctx.strokeStyle = isSatelliteOrHybrid ? 'rgba(0, 0, 0, 0.9)' : palette.textHalo;
-        ctx.lineWidth = 3;
-        ctx.strokeText(name, p[0], p[1] + 5);
-        ctx.fillStyle = isSatelliteOrHybrid ? '#ffffff' : palette.text;
-        ctx.fillText(name, p[0], p[1] + 5);
+    // Filter features by zoom hierarchy
+    const visibleLabelFeatures = features.filter((f) => {
+      const kind = f.properties?.kind || f.layer;
+      if (zoom < 5) {
+        return kind === 'country' || kind === 'ocean';
       }
+      if (zoom >= 5 && zoom < 10) {
+        return kind === 'country' || kind === 'city';
+      }
+      return kind === 'city' || kind === 'poi' || f.layer === 'place';
+    });
+
+    for (const f of visibleLabelFeatures) {
+      const name = f.properties?.name;
+      if (!name) continue;
+      const coords = f.coordinates || (f.geometry ? f.geometry.coordinates : null);
+      if (!coords || !Array.isArray(coords)) continue;
+
+      const p = project(coords[0], coords[1], w, h);
+      if (p[0] < -40 || p[0] > w + 40 || p[1] < -40 || p[1] > h + 40) continue;
+
+      const isCountry = f.properties?.kind === 'country';
+      const isOcean = f.properties?.kind === 'ocean';
+
+      if (isCountry) {
+        ctx.font = '800 13px sans-serif';
+      } else if (isOcean) {
+        ctx.font = '600 12px sans-serif';
+      } else {
+        ctx.font = zoom >= 13 ? '700 12px sans-serif' : '600 11px sans-serif';
+      }
+
+      const tw = ctx.measureText(name).width;
+      const bbox = { minX: p[0] - tw / 2 - 6, maxX: p[0] + tw / 2 + 6, minY: p[1] - 8, maxY: p[1] + 16 };
+
+      let collision = false;
+      for (const b of labelBoxes) {
+        if (!(bbox.maxX < b.minX || bbox.minX > b.maxX || bbox.maxY < b.minY || bbox.minY > b.maxY)) {
+          collision = true;
+          break;
+        }
+      }
+      if (collision) continue;
+      labelBoxes.push(bbox);
+
+      ctx.textAlign = 'center';
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)';
+      ctx.lineWidth = isCountry ? 4 : 3;
+      ctx.strokeText(name, p[0], p[1] + 5);
+
+      if (isOcean) {
+        ctx.fillStyle = '#7dd3fc';
+      } else if (isCountry) {
+        ctx.fillStyle = '#ffffff';
+      } else {
+        ctx.fillStyle = isSatelliteOrHybrid ? '#f8fafc' : palette.text;
+      }
+      ctx.fillText(name, p[0], p[1] + 5);
     }
 
     ctx.restore();
@@ -441,13 +447,15 @@ export default function MapViewport({
     let startY = 0;
     let moved = false;
 
-    // Mouse handlers
+    // Mouse Drag (Left-click pan only)
     const onMouseDown = (e: MouseEvent) => {
-      isDragging = true;
-      moved = false;
-      startX = e.clientX;
-      startY = e.clientY;
-      canvas.style.cursor = 'grabbing';
+      if (e.button === 0) {
+        isDragging = true;
+        moved = false;
+        startX = e.clientX;
+        startY = e.clientY;
+        canvas.style.cursor = 'grabbing';
+      }
     };
 
     const onMouseMove = (e: MouseEvent) => {
@@ -464,27 +472,41 @@ export default function MapViewport({
     };
 
     const onMouseUp = (e: MouseEvent) => {
-      if (isDragging) {
+      if (e.button === 0 && isDragging) {
         isDragging = false;
         canvas.style.cursor = 'grab';
-        if (!moved) {
-          const rect = canvas.getBoundingClientRect();
-          const clickX = e.clientX - rect.left;
-          const clickY = e.clientY - rect.top;
-          const geo = unproject(clickX, clickY, rect.width, rect.height);
-          onMapClick(geo, [clickX, clickY]);
-        }
       }
     };
 
-    const onWheel = (e: WheelEvent) => {
+    // Right-Click Context Menu Trigger
+    const onContextMenu = (e: MouseEvent) => {
       e.preventDefault();
-      const delta = e.deltaY < 0 ? 0.35 : -0.35;
-      const nextZoom = Math.max(1, Math.min(19, zoom + delta));
-      onCenterChange(center, nextZoom);
+      const rect = canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+      const geo = unproject(clickX, clickY, rect.width, rect.height);
+      onMapClick(geo, [clickX, clickY]);
     };
 
-    // Mobile Touch Handlers (Single finger pan & 2-finger pinch-to-zoom)
+    // Smooth & Ultra-Responsive Wheel Zoom
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const zoomDelta = -e.deltaY * 0.0025;
+      const nextZoom = Math.max(1, Math.min(19, zoom + zoomDelta));
+
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      const mouseGeo = unproject(mouseX, mouseY, rect.width, rect.height);
+
+      const factor = 1 - Math.pow(2, zoom - nextZoom);
+      const nextLon = center[0] + (mouseGeo[0] - center[0]) * factor * 0.4;
+      const nextLat = center[1] + (mouseGeo[1] - center[1]) * factor * 0.4;
+
+      onCenterChange([nextLon, nextLat], nextZoom);
+    };
+
+    // Mobile Touch Handlers
     let initialTouchDist = 0;
     let initialTouchZoom = zoom;
 
@@ -526,14 +548,7 @@ export default function MapViewport({
       }
     };
 
-    const onTouchEnd = (e: TouchEvent) => {
-      if (isDragging && !moved && e.changedTouches.length === 1) {
-        const rect = canvas.getBoundingClientRect();
-        const clickX = e.changedTouches[0].clientX - rect.left;
-        const clickY = e.changedTouches[0].clientY - rect.top;
-        const geo = unproject(clickX, clickY, rect.width, rect.height);
-        onMapClick(geo, [clickX, clickY]);
-      }
+    const onTouchEnd = () => {
       isDragging = false;
       initialTouchDist = 0;
     };
@@ -541,6 +556,7 @@ export default function MapViewport({
     canvas.addEventListener('mousedown', onMouseDown);
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
+    canvas.addEventListener('contextmenu', onContextMenu);
     canvas.addEventListener('wheel', onWheel, { passive: false });
 
     canvas.addEventListener('touchstart', onTouchStart, { passive: true });
@@ -551,6 +567,7 @@ export default function MapViewport({
       canvas.removeEventListener('mousedown', onMouseDown);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
+      canvas.removeEventListener('contextmenu', onContextMenu);
       canvas.removeEventListener('wheel', onWheel);
 
       canvas.removeEventListener('touchstart', onTouchStart);
@@ -563,7 +580,7 @@ export default function MapViewport({
     <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
       <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block', cursor: 'grab' }} />
 
-      {/* Floating Layer Switcher Pill (Top Right or Bottom Left) */}
+      {/* Floating Layer Switcher Pill */}
       <div
         style={{
           position: 'absolute',
@@ -573,7 +590,7 @@ export default function MapViewport({
           display: 'flex',
           alignItems: 'center',
           background: 'var(--bg-surface-glass)',
-          backdropFilter: 'blur(12px)',
+          backdropFilter: 'blur(16px)',
           border: '1px solid var(--border-color)',
           borderRadius: '30px',
           padding: '3px',
@@ -650,7 +667,7 @@ export default function MapViewport({
         </button>
       </div>
 
-      {/* Floating Navigation Controls (Right Edge - Desktop & Mobile thumb-friendly) */}
+      {/* Floating Navigation Controls */}
       <div
         style={{
           position: 'absolute',
@@ -699,7 +716,7 @@ export default function MapViewport({
         </button>
       </div>
 
-      {/* Bottom Status & Precision Legal Bar */}
+      {/* Bottom Status & Precision Legal Bar (Combined Single '서비스 정책' Link) */}
       <div
         className="map-status-bar"
         style={{
@@ -710,10 +727,10 @@ export default function MapViewport({
           alignItems: 'center',
           gap: 10,
           background: 'var(--bg-surface-glass)',
-          backdropFilter: 'blur(10px)',
+          backdropFilter: 'blur(12px)',
           border: '1px solid var(--border-color)',
           borderRadius: 'var(--radius-sm)',
-          padding: '5px 12px',
+          padding: '6px 14px',
           fontSize: 11,
           color: 'var(--text-secondary)',
           zIndex: 80,
@@ -726,9 +743,9 @@ export default function MapViewport({
         <span>Z: {zoom.toFixed(1)}</span>
         <span>{center[0].toFixed(4)}, {center[1].toFixed(4)}</span>
         <span style={{ color: 'var(--border-color)' }}>|</span>
-        <a href="/legal/terms" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>이용약관</a>
-        <a href="/legal/privacy" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>개인정보방침</a>
-        <a href="/legal" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>11대 정책 허브</a>
+        <a href="/legal" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 700 }}>
+          서비스 정책
+        </a>
         <span style={{ color: 'var(--text-muted)' }}>&copy; KCS Satellite Imagery</span>
       </div>
     </div>

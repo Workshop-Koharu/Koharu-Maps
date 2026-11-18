@@ -84,7 +84,7 @@ export interface BoundingBox {
 export interface MapFeature {
   id: string | number;
   type: 'Point' | 'LineString' | 'Polygon' | 'MultiPolygon';
-  layer: 'water' | 'green' | 'road' | 'building' | 'place' | 'boundary' | 'continent';
+  layer: 'water' | 'green' | 'road' | 'building' | 'place' | 'boundary' | 'continent' | 'country' | 'ocean' | 'city';
   coordinates: any;
   properties: Record<string, any>;
   minZoom?: number;
@@ -92,8 +92,10 @@ export interface MapFeature {
 }
 
 // Road Graph for A* Navigation
+export type NodeId = string | number;
+
 export interface RoadNode {
-  id: number;
+  id: NodeId;
   lon: number;
   lat: number;
   name: string;
@@ -101,8 +103,8 @@ export interface RoadNode {
 
 export interface RoadEdge {
   id: number;
-  fromNode: number;
-  toNode: number;
+  fromNode: NodeId;
+  toNode: NodeId;
   distanceM: number;
   travelTimeSec: number;
   roadName: string;
@@ -113,20 +115,21 @@ export interface RoadEdge {
 }
 
 export class RoadGraph {
-  nodes: Map<number, RoadNode> = new Map();
-  adj: Map<number, RoadEdge[]> = new Map();
+  nodes: Map<NodeId, RoadNode> = new Map();
+  adj: Map<NodeId, RoadEdge[]> = new Map();
   edgeCounter = 0;
 
-  addNode(id: number, lon: number, lat: number, name: string = ''): RoadNode {
-    const node = { id, lon, lat, name };
+  addNode(id: NodeId, lon: number, lat: number, name: string | { name?: string } = ''): RoadNode {
+    const nodeName: string = typeof name === 'string' ? name : (name && name.name ? name.name : '');
+    const node: RoadNode = { id, lon, lat, name: nodeName };
     this.nodes.set(id, node);
     if (!this.adj.has(id)) this.adj.set(id, []);
     return node;
   }
 
   addEdge(
-    fromNode: number,
-    toNode: number,
+    fromNode: NodeId,
+    toNode: NodeId,
     roadName: string,
     roadType: string = 'primary',
     speedKmh: number = 60,
@@ -173,8 +176,8 @@ export class RoadGraph {
     }
   }
 
-  findNearestNode(lon: number, lat: number): { nodeId: number; distM: number } {
-    let bestId = -1;
+  findNearestNode(lon: number, lat: number): { nodeId: NodeId; distM: number } {
+    let bestId: NodeId = '';
     let minDist = Infinity;
     this.nodes.forEach(node => {
       const d = haversineDistance(lon, lat, node.lon, node.lat);
@@ -186,18 +189,18 @@ export class RoadGraph {
     return { nodeId: bestId, distM: minDist };
   }
 
-  aStarRoute(startId: number, targetId: number, weightByTime: boolean = true) {
+  aStarRoute(startId: NodeId, targetId: NodeId, weightByTime: boolean = true) {
     if (!this.nodes.has(startId) || !this.nodes.has(targetId)) return null;
     const targetNode = this.nodes.get(targetId)!;
 
-    const gScore = new Map<number, number>();
-    const cameFrom = new Map<number, { prevId: number; edge: RoadEdge }>();
-    const openSet = new Set<number>([startId]);
+    const gScore = new Map<NodeId, number>();
+    const cameFrom = new Map<NodeId, { prevId: NodeId; edge: RoadEdge }>();
+    const openSet = new Set<NodeId>([startId]);
 
     this.nodes.forEach(n => gScore.set(n.id, Infinity));
     gScore.set(startId, 0);
 
-    const fScore = (id: number) => {
+    const fScore = (id: NodeId) => {
       const g = gScore.get(id) || Infinity;
       const n = this.nodes.get(id)!;
       const hDist = haversineDistance(n.lon, n.lat, targetNode.lon, targetNode.lat);
@@ -206,7 +209,7 @@ export class RoadGraph {
     };
 
     while (openSet.size > 0) {
-      let current = -1;
+      let current: NodeId | null = null;
       let lowestF = Infinity;
       openSet.forEach(id => {
         const f = fScore(id);
@@ -216,10 +219,12 @@ export class RoadGraph {
         }
       });
 
+      if (current === null) break;
+
       if (current === targetId) {
         // Reconstruct path
         const pathEdges: RoadEdge[] = [];
-        let curr = targetId;
+        let curr: NodeId = targetId;
         while (curr !== startId) {
           const step = cameFrom.get(curr);
           if (!step) break;

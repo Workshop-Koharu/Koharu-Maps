@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
   const startSnap = roadGraph.findNearestNode(sLon, sLat);
   const targetSnap = roadGraph.findNearestNode(tLon, tLat);
 
-  if (startSnap.nodeId === -1 || targetSnap.nodeId === -1) {
+  if (!startSnap.nodeId || !targetSnap.nodeId || startSnap.nodeId === -1 || targetSnap.nodeId === -1) {
     return NextResponse.json({ status: 'error', message: '연결 가능한 도로망 노드를 찾을 수 없습니다.' }, { status: 404 });
   }
 

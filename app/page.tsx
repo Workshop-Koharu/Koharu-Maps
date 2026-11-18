@@ -76,7 +76,21 @@ export default function MainPage() {
         if (data.features) setFeatures(data.features);
       })
       .catch(console.error);
-  }, [fetchUser]);
+
+    // Parse URL Coordinates from shared link
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const lat = parseFloat(params.get('lat') || '');
+      const lon = parseFloat(params.get('lon') || '');
+      const z = parseFloat(params.get('zoom') || '');
+      if (!isNaN(lat) && !isNaN(lon)) {
+        setCenter([lon, lat]);
+        if (!isNaN(z)) setZoom(z);
+        setMarkers([{ lon, lat, title: '공유된 위치', color: '#38bdf8' }]);
+        showToast('공유된 좌표 위치로 이동했습니다.');
+      }
+    } catch {}
+  }, [fetchUser, showToast]);
 
   useEffect(() => {
     if (user) {
@@ -265,6 +279,7 @@ export default function MainPage() {
         onSetStart={(p) => { setStartPoint(p); setIsRouteOpen(true); }}
         onSetTarget={(p) => { setTargetPoint(p); setIsRouteOpen(true); }}
         onAddFavorite={handleAddFavorite}
+        onShare={() => showToast('좌표 공유 링크가 클립보드에 복사되었습니다!')}
       />
 
       {/* 6. Auth Modal (Resend + Social 3) */}

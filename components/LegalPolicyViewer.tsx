@@ -490,8 +490,8 @@ function renderPolicyContent(slug: string) {
 
           <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 12 }}>3. 위치정보 관리책임자</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: 20 }}>
-            &bull; 부서: Koharu Maps 위치정보보호팀<br />
-            &bull; 문의처: privacy@koharu.live
+            &bull; 부서: KCS 관리진<br />
+            &bull; 문의처: admin@koharu.live
           </p>
         </div>
       );
@@ -560,7 +560,7 @@ function renderPolicyContent(slug: string) {
 
           <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 12 }}>3. 지적재산권 및 권리 침해 신고</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: 20 }}>
-            이용자가 등록한 콘텐츠의 저작권은 해당 작성자에게 귀속됩니다. 타인의 저작권이나 권리를 침해당한 당사자는 <code>contact@koharu.live</code>로 침해 사실 소명 자료와 함께 삭제를 요청할 수 있습니다.
+            이용자가 등록한 콘텐츠의 저작권은 해당 작성자에게 귀속됩니다. 타인의 저작권이나 권리를 침해당한 당사자는 <code>admin@koharu.live</code>로 침해 사실 소명 자료와 함께 삭제를 요청할 수 있습니다.
           </p>
         </div>
       );
@@ -600,8 +600,8 @@ function renderPolicyContent(slug: string) {
 
           <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 12 }}>3. 청소년 보호책임자 및 상담 창구</h2>
           <div style={{ padding: 16, background: 'var(--bg-elevated)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', marginBottom: 20 }}>
-            &bull; <strong>청소년 보호책임자:</strong> Koharu Maps 유해정보심의팀장<br />
-            &bull; <strong>연락처 및 신고 메일:</strong> youth@koharu.live<br />
+            &bull; <strong>청소년 보호책임자:</strong> KCS 관리진<br />
+            &bull; <strong>연락처 및 신고 메일:</strong> admin@koharu.live<br />
             &bull; <strong>업무 내용:</strong> 청소년 유해정보 모니터링, 이용자 고충 처리 및 피해 상담
           </div>
         </div>

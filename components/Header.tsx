@@ -97,40 +97,45 @@ export default function Header({
           pointerEvents: 'none',
         }}
       >
-        {/* Brand Logo & Title */}
-        <div
+        {/* Brand Logo & Title (Transparent Background, High Visibility) */}
+        <Link
+          href="/"
           style={{
             pointerEvents: 'auto',
             display: 'flex',
             alignItems: 'center',
             gap: 10,
-            background: 'var(--bg-surface-glass)',
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
-            padding: '7px 14px',
-            borderRadius: 'var(--radius-lg)',
-            border: '1px solid var(--border-color)',
-            boxShadow: 'var(--shadow-md)',
+            textDecoration: 'none',
             flexShrink: 0,
+            padding: '4px 6px',
+            background: 'transparent',
+            border: 'none',
           }}
         >
-          <img src="/logo.svg" alt="Koharu Maps Logo" width="22" height="22" />
-          <Link
-            href="/"
+          <img
+            src="/logo.svg"
+            alt="Koharu Maps Logo"
+            width="32"
+            height="32"
             style={{
-              textDecoration: 'none',
-              color: 'var(--text-primary)',
+              display: 'block',
+              filter: 'drop-shadow(0 2px 8px rgba(0, 242, 254, 0.45))',
+            }}
+          />
+          <span
+            style={{
               fontWeight: 800,
-              fontSize: 15,
+              fontSize: 17,
               letterSpacing: '-0.4px',
+              color: 'var(--text-primary)',
+              textShadow: theme === 'dark' 
+                ? '0 2px 8px rgba(0,0,0,0.8)' 
+                : '0 1px 4px rgba(255,255,255,0.9), 0 2px 8px rgba(0,0,0,0.3)',
             }}
           >
             Koharu Maps
-          </Link>
-          <span className="badge badge-blue" style={{ display: 'none' }}>
-            GIS
           </span>
-        </div>
+        </Link>
 
         {/* Global Search Bar (Responsive) */}
         <div
