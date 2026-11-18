@@ -2,7 +2,7 @@
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Plus, Minus, Layers, Crosshair, Globe, Satellite, Map as MapIcon, Box } from 'lucide-react';
-import { lonLatToPixel, pixelToLonLat } from '@/lib/gis-engine';
+import { lonLatToPixel, pixelToLonLat, haversineDistance } from '@/lib/gis-engine';
 
 export type LayerMode = 'hybrid' | 'satellite' | 'vector' | '3d';
 
@@ -17,6 +17,13 @@ interface MapViewportProps {
   onMapClick: (geo: [number, number], screenPos: [number, number]) => void;
   layerMode?: LayerMode;
   onLayerModeChange?: (mode: LayerMode) => void;
+  timeHour?: number;
+  onSelectPlace?: (place: any) => void;
+  isMeasureMode?: boolean;
+  measurePoints?: [number, number][];
+  onAddMeasurePoint?: (point: [number, number]) => void;
+  onClearMeasure?: () => void;
+  isOfflineMode?: boolean;
 }
 
 const THEMES: Record<string, any> = {
@@ -75,6 +82,13 @@ export default function MapViewport({
   onMapClick,
   layerMode = 'hybrid',
   onLayerModeChange,
+  timeHour = 14,
+  onSelectPlace,
+  isMeasureMode = false,
+  measurePoints = [],
+  onAddMeasurePoint,
+  onClearMeasure,
+  isOfflineMode = false,
 }: MapViewportProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [pitch, setPitch] = useState(layerMode === '3d' ? 55 : 0);
@@ -263,8 +277,8 @@ export default function MapViewport({
       let minWorldY = cPx[1] - (pitch > 0 ? h / (2 * Math.cos((pitch * Math.PI) / 180)) : h / 2);
       let maxWorldY = cPx[1] + (pitch > 0 ? h / (2 * Math.cos((pitch * Math.PI) / 180)) : h / 2);
 
-      const minTileX = Math.floor((minWorldX / worldSize) * numTiles) - 1;
-      const maxTileX = Math.ceil((maxWorldX / worldSize) * numTiles) + 1;
+      const minTileX = Math.floor((minWorldX / worldSize) * numTiles) - 2;
+      const maxTileX = Math.ceil((maxWorldX / worldSize) * numTiles) + 2;
       const minTileY = Math.max(0, Math.floor((minWorldY / worldSize) * numTiles) - 1);
       const maxTileY = Math.min(numTiles - 1, Math.ceil((maxWorldY / worldSize) * numTiles) + 1);
 
@@ -292,7 +306,7 @@ export default function MapViewport({
 
           if (cachedImg && cachedImg.complete && cachedImg.naturalWidth > 0) {
             ctx.drawImage(cachedImg, sx, sy, sWidth + 0.5, sHeight + 0.5);
-          } else {
+          } else if (!isOfflineMode) {
             // Parent LOD interpolation for seamless loading
             if (tileZ > 0) {
               const pZ = tileZ - 1;
@@ -340,10 +354,17 @@ export default function MapViewport({
     }
 
     // =========================================================================
-    // 3. ROADS & HIGHWAYS (Skipped in pure Satellite mode for raw photography)
+    // 3. ROADS & HIGHWAYS (Skipped in pure Satellite mode; Zoom-Filtered)
     // =========================================================================
-    if (activeMode !== 'satellite') {
-      const roadFeatures = features.filter((f) => f.layer === 'road');
+    // Road zoom threshold: zoom < 6: hidden, 6..8: motorway only, 9..11: primary+, 12+: all
+    if (activeMode !== 'satellite' && zoom >= 6) {
+      const roadFeatures = features.filter((f) => {
+        if (f.layer !== 'road') return false;
+        const kind = f.properties?.kind || 'secondary';
+        if (kind === 'motorway') return zoom >= 6;
+        if (kind === 'primary') return zoom >= 9;
+        return zoom >= 12;
+      });
 
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
@@ -353,7 +374,9 @@ export default function MapViewport({
         const coords = f.geometry ? f.geometry.coordinates : f.coordinates;
         if (!coords || coords.length < 2) continue;
         const kind = f.properties?.kind || 'secondary';
-        const baseWidth = kind === 'motorway' ? (zoom >= 14 ? 10 : 6) : zoom >= 14 ? 7 : 4;
+        const baseWidth = kind === 'motorway' 
+          ? (zoom >= 15 ? 9 : zoom >= 12 ? 6 : zoom >= 9 ? 3.5 : 2)
+          : (zoom >= 15 ? 6 : zoom >= 12 ? 4 : 2);
 
         ctx.beginPath();
         for (let i = 0; i < coords.length; i++) {
@@ -362,7 +385,7 @@ export default function MapViewport({
           else ctx.lineTo(p[0], p[1]);
         }
         ctx.strokeStyle = activeMode === 'vector' ? palette.roadCasing : 'rgba(0, 0, 0, 0.85)';
-        ctx.lineWidth = baseWidth + 2.5;
+        ctx.lineWidth = baseWidth + (zoom >= 11 ? 2.5 : 1.2);
         ctx.stroke();
       }
 
@@ -371,7 +394,9 @@ export default function MapViewport({
         const coords = f.geometry ? f.geometry.coordinates : f.coordinates;
         if (!coords || coords.length < 2) continue;
         const kind = f.properties?.kind || 'secondary';
-        const baseWidth = kind === 'motorway' ? (zoom >= 14 ? 10 : 6) : zoom >= 14 ? 7 : 4;
+        const baseWidth = kind === 'motorway' 
+          ? (zoom >= 15 ? 9 : zoom >= 12 ? 6 : zoom >= 9 ? 3.5 : 2)
+          : (zoom >= 15 ? 6 : zoom >= 12 ? 4 : 2);
 
         ctx.beginPath();
         for (let i = 0; i < coords.length; i++) {
@@ -405,6 +430,13 @@ export default function MapViewport({
       const metersPerPixel = (Math.cos((center[1] * Math.PI) / 180) * 40075016.686) / (256 * Math.pow(2, zoom));
       const pitchRad = (pitch * Math.PI) / 180.0;
 
+      // 3D Sun Shadow Time-Machine: Calculate dynamic sunlight angle based on timeHour (06:00 ~ 22:00)
+      const sunHour = timeHour ?? 14;
+      const sunAngle = ((sunHour - 12) / 6) * (Math.PI / 2);
+      const shadowFactor = 0.5 + Math.abs(sunHour - 12) * 0.12;
+      const sunDirX = Math.sin(sunAngle);
+      const sunDirY = -Math.cos(sunAngle);
+
       for (const b of bldgFeatures) {
         const coords = b.coordinates?.[0];
         if (!coords || coords.length < 4) continue;
@@ -415,17 +447,21 @@ export default function MapViewport({
         const basePoints = coords.map((c: [number, number]) => project(c[0], c[1], w, h));
         const roofPoints = basePoints.map((p: [number, number]) => [p[0], p[1] - extrudePx] as [number, number]);
 
-        // 1. Ground Drop Shadow
+        // 1. Dynamic Sun Shadow Time-Machine Ground Shadow
+        const shadowLength = extrudePx * shadowFactor;
+        const shadowDx = -sunDirX * shadowLength;
+        const shadowDy = Math.cos(sunAngle) * shadowLength * 0.45;
+
         ctx.beginPath();
         for (let i = 0; i < basePoints.length; i++) {
-          if (i === 0) ctx.moveTo(basePoints[i][0] + extrudePx * 0.3, basePoints[i][1]);
-          else ctx.lineTo(basePoints[i][0] + extrudePx * 0.3, basePoints[i][1]);
+          if (i === 0) ctx.moveTo(basePoints[i][0] + shadowDx, basePoints[i][1] + shadowDy);
+          else ctx.lineTo(basePoints[i][0] + shadowDx, basePoints[i][1] + shadowDy);
         }
         ctx.closePath();
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.42)';
         ctx.fill();
 
-        // 2. Extruded Side Walls with Sunlight Shading
+        // 2. Extruded Side Walls with Sunlight Illumination
         const wallColor = b.properties?.wallColor || palette.buildingWallFront;
         const sideShadow = palette.buildingWallSide;
 
@@ -435,8 +471,12 @@ export default function MapViewport({
           const r1 = roofPoints[i];
           const r2 = roofPoints[i + 1];
 
-          // Face normal dot product to simulate top-left sun illumination
-          const isFrontFace = p2[0] >= p1[0];
+          // Face normal dot product with sun ray vector
+          const edgeDx = p2[0] - p1[0];
+          const edgeDy = p2[1] - p1[1];
+          const nx = -edgeDy;
+          const ny = edgeDx;
+          const dot = nx * sunDirX + ny * sunDirY;
 
           ctx.beginPath();
           ctx.moveTo(p1[0], p1[1]);
@@ -445,7 +485,7 @@ export default function MapViewport({
           ctx.lineTo(r1[0], r1[1]);
           ctx.closePath();
 
-          ctx.fillStyle = isFrontFace ? wallColor : sideShadow;
+          ctx.fillStyle = dot > 0 ? wallColor : sideShadow;
           ctx.fill();
           ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
           ctx.lineWidth = 0.8;
@@ -535,6 +575,77 @@ export default function MapViewport({
       ctx.strokeStyle = '#93c5fd';
       ctx.lineWidth = 2.5;
       ctx.stroke();
+    }
+
+    // =========================================================================
+    // 5.1 SPATIAL DISTANCE & AREA MEASUREMENT TOOL
+    // =========================================================================
+    if (measurePoints && measurePoints.length > 0) {
+      ctx.save();
+      ctx.beginPath();
+      for (let i = 0; i < measurePoints.length; i++) {
+        const p = project(measurePoints[i][0], measurePoints[i][1], w, h);
+        if (i === 0) ctx.moveTo(p[0], p[1]);
+        else ctx.lineTo(p[0], p[1]);
+      }
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([6, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      let totalDistM = 0;
+      for (let i = 0; i < measurePoints.length; i++) {
+        const pt = measurePoints[i];
+        const p = project(pt[0], pt[1], w, h);
+        if (i > 0) {
+          const prev = measurePoints[i - 1];
+          const d = haversineDistance(prev[0], prev[1], pt[0], pt[1]);
+          totalDistM += d;
+
+          // Segment distance pill
+          const prevP = project(prev[0], prev[1], w, h);
+          const midX = (prevP[0] + p[0]) / 2;
+          const midY = (prevP[1] + p[1]) / 2;
+          const segText = d >= 1000 ? `${(d / 1000).toFixed(2)} km` : `${Math.round(d)} m`;
+          ctx.font = '700 11px sans-serif';
+          const tw = ctx.measureText(segText).width;
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+          ctx.strokeStyle = '#f59e0b';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.roundRect(midX - tw / 2 - 5, midY - 10, tw + 10, 18, 4);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = '#f59e0b';
+          ctx.textAlign = 'center';
+          ctx.fillText(segText, midX, midY + 3);
+        }
+
+        // Point anchor
+        ctx.beginPath();
+        ctx.arc(p[0], p[1], 5, 0, Math.PI * 2);
+        ctx.fillStyle = '#f59e0b';
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      if (measurePoints.length >= 2) {
+        const lastP = project(measurePoints[measurePoints.length - 1][0], measurePoints[measurePoints.length - 1][1], w, h);
+        const totalText = `총 측량 거리: ${(totalDistM / 1000).toFixed(2)} km`;
+        ctx.font = '800 12px sans-serif';
+        const tw = ctx.measureText(totalText).width;
+        ctx.fillStyle = '#f59e0b';
+        ctx.beginPath();
+        ctx.roundRect(lastP[0] + 12, lastP[1] - 12, tw + 16, 24, 6);
+        ctx.fill();
+        ctx.fillStyle = '#000000';
+        ctx.textAlign = 'left';
+        ctx.fillText(totalText, lastP[0] + 20, lastP[1] + 4);
+      }
+      ctx.restore();
     }
 
     // =========================================================================
@@ -673,7 +784,7 @@ export default function MapViewport({
     }
 
     ctx.restore();
-  }, [theme, features, route, markers, project, zoom, center, pitch, activeMode]);
+  }, [theme, features, route, markers, project, zoom, center, pitch, activeMode, timeHour, measurePoints, isOfflineMode]);
 
   useEffect(() => {
     let animId = requestAnimationFrame(render);
@@ -709,8 +820,94 @@ export default function MapViewport({
     onCenterChange(newGeo, zoom);
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
     isDraggingRef.current = false;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const dragDist = Math.hypot(e.clientX - dragStartRef.current[0], e.clientY - dragStartRef.current[1]);
+    if (dragDist < 6 && e.button === 0) {
+      const rect = canvas.getBoundingClientRect();
+      const screenX = e.clientX - rect.left;
+      const screenY = e.clientY - rect.top;
+      const geo = unproject(screenX, screenY, rect.width, rect.height);
+
+      if (isMeasureMode && onAddMeasurePoint) {
+        onAddMeasurePoint(geo);
+        return;
+      }
+
+      // Check click collision with POI features or buildings
+      if (onSelectPlace) {
+        let hitPlace: any = null;
+        let minD = 28;
+
+        for (const f of features) {
+          if (f.layer === 'place' || f.properties?.kind === 'poi') {
+            const coords = f.coordinates || f.geometry?.coordinates;
+            if (coords) {
+              const p = project(coords[0], coords[1], rect.width, rect.height);
+              const d = Math.hypot(screenX - p[0], screenY - p[1]);
+              if (d < minD) {
+                minD = d;
+                hitPlace = {
+                  id: f.id,
+                  name: f.properties?.name || '선택한 장소',
+                  category: f.properties?.category || '일반',
+                  subCategory: f.properties?.subCategory,
+                  address: f.properties?.address || `${coords[0].toFixed(4)}, ${coords[1].toFixed(4)}`,
+                  lon: coords[0],
+                  lat: coords[1],
+                  rating: f.properties?.rating,
+                  reviewCount: f.properties?.reviewCount,
+                  photo: f.properties?.photo,
+                  phone: f.properties?.phone,
+                  hours: f.properties?.hours,
+                  menu: f.properties?.menu,
+                  facilities: f.properties?.facilities,
+                  reviews: f.properties?.reviews,
+                };
+              }
+            }
+          }
+        }
+
+        // Search Buildings within footprint or 30px
+        if (!hitPlace) {
+          for (const b of features) {
+            if (b.layer === 'building' && b.coordinates?.[0]) {
+              const basePoints = b.coordinates[0].map((c: [number, number]) => project(c[0], c[1], rect.width, rect.height));
+              const centerPxX = basePoints.reduce((acc: number, cur: [number, number]) => acc + cur[0], 0) / basePoints.length;
+              const centerPxY = basePoints.reduce((acc: number, cur: [number, number]) => acc + cur[1], 0) / basePoints.length;
+              const d = Math.hypot(screenX - centerPxX, screenY - centerPxY);
+              if (d < 35) {
+                const c0 = b.coordinates[0][0];
+                hitPlace = {
+                  id: b.id,
+                  name: b.properties?.name || '3D 랜드마크 빌딩',
+                  category: '3D 랜드마크',
+                  subCategory: '초고층 건축물',
+                  address: b.properties?.address || '대한민국 중심 업무지구',
+                  lon: c0[0],
+                  lat: c0[1],
+                  rating: 4.8,
+                  reviewCount: 324,
+                  photo: b.properties?.photo,
+                  hours: '24시간 운영',
+                  phone: '02-120',
+                  facilities: ['주차가능', '초고속Wi-Fi', '엘리베이터', '전망대'],
+                };
+                break;
+              }
+            }
+          }
+        }
+
+        if (hitPlace) {
+          onSelectPlace(hitPlace);
+        }
+      }
+    }
   };
 
   // Smooth Wheel Zoom directed at mouse cursor
@@ -947,6 +1144,9 @@ export default function MapViewport({
         <span>Z: {zoom.toFixed(1)}</span>
         <span>{center[0].toFixed(4)}, {center[1].toFixed(4)}</span>
         <span>모드: {activeMode.toUpperCase()}{pitch > 0 ? ` (3D ${pitch}°)` : ''}</span>
+        {isOfflineMode && (
+          <span style={{ color: '#10b981', fontWeight: 700 }}>[오프라인 전용 모드]</span>
+        )}
         <span style={{ color: 'var(--border-color)' }}>|</span>
         <a href="/legal" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 700 }}>
           서비스 정책
