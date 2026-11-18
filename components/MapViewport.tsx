@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Plus, Minus, Layers, Crosshair, Globe, Satellite, Map as MapIcon } from 'lucide-react';
+import { Plus, Minus, Layers, Crosshair, Globe, Satellite, Map as MapIcon, Box } from 'lucide-react';
 import { lonLatToPixel, pixelToLonLat } from '@/lib/gis-engine';
 
-export type LayerMode = 'hybrid' | 'satellite' | 'vector';
+export type LayerMode = 'hybrid' | 'satellite' | 'vector' | '3d';
 
 interface MapViewportProps {
   theme: string;
@@ -22,24 +22,38 @@ interface MapViewportProps {
 const THEMES: Record<string, any> = {
   light: {
     bg: '#050811',
-    vectorBg: '#f8fafc',
-    continent: '#e2e8f0',
+    ocean: '#bae6fd',
+    land: '#fcfbf7',
+    landStroke: '#7dd3fc',
+    water: '#38bdf8',
+    green: '#dcfce7',
+    greenStroke: '#86efac',
+    buildingRoof: '#cbd5e1',
+    buildingWallFront: '#94a3b8',
+    buildingWallSide: '#64748b',
     roadMotorway: '#f59e0b',
-    roadPrimary: '#fbbf24',
-    roadSecondary: '#ffffff',
-    roadCasing: '#94a3b8',
+    roadPrimary: '#ffffff',
+    roadSecondary: '#f1f5f9',
+    roadCasing: '#cbd5e1',
     text: '#0f172a',
     textHalo: '#ffffff',
     routeLine: '#2563eb',
   },
   dark: {
     bg: '#050811',
-    vectorBg: '#090d16',
-    continent: '#1e2532',
+    ocean: '#090e1a',
+    land: '#162032',
+    landStroke: '#1e3a8a',
+    water: '#0284c7',
+    green: '#14532d',
+    greenStroke: '#166534',
+    buildingRoof: '#475569',
+    buildingWallFront: '#334155',
+    buildingWallSide: '#1e293b',
     roadMotorway: '#f59e0b',
-    roadPrimary: '#d97706',
-    roadSecondary: '#334155',
-    roadCasing: '#0f172a',
+    roadPrimary: '#334155',
+    roadSecondary: '#1e293b',
+    roadCasing: '#090e1a',
     text: '#f8fafc',
     textHalo: '#090d16',
     routeLine: '#38bdf8',
@@ -63,13 +77,18 @@ export default function MapViewport({
   onLayerModeChange,
 }: MapViewportProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [pitch, setPitch] = useState(0);
+  const [pitch, setPitch] = useState(layerMode === '3d' ? 55 : 0);
   const [internalMode, setInternalMode] = useState<LayerMode>(layerMode);
   const [isLocating, setIsLocating] = useState(false);
 
   const activeMode = onLayerModeChange ? layerMode : internalMode;
 
   const handleModeSwitch = (mode: LayerMode) => {
+    if (mode === '3d') {
+      setPitch(55);
+    } else if (activeMode === '3d') {
+      setPitch(0);
+    }
     if (onLayerModeChange) {
       onLayerModeChange(mode);
     } else {
@@ -77,7 +96,7 @@ export default function MapViewport({
     }
   };
 
-  // Convert Lon/Lat to screen projection with horizontal wrap awareness
+  // Convert Lon/Lat to screen projection with horizontal wrap awareness & 3D tilt
   const project = useCallback(
     (lon: number, lat: number, width: number, height: number): [number, number] => {
       const cPx = lonLatToPixel(center[0], center[1], zoom);
@@ -155,14 +174,83 @@ export default function MapViewport({
     ctx.scale(dpr, dpr);
 
     const palette = THEMES[theme] || THEMES.light;
-    const isSatelliteOrHybrid = activeMode === 'satellite' || activeMode === 'hybrid';
+    const isSatelliteBase = activeMode === 'satellite' || activeMode === 'hybrid' || activeMode === '3d';
 
-    // 1. Dark Space Background
-    ctx.fillStyle = isSatelliteOrHybrid ? '#050811' : palette.vectorBg;
-    ctx.fillRect(0, 0, w, h);
+    // =========================================================================
+    // 1. BASE BACKGROUND & TERRAIN (Distinct across modes)
+    // =========================================================================
+    if (activeMode === 'vector') {
+      // Vector Mode: Sky-blue or Deep Navy Cartographic Ocean Base
+      ctx.fillStyle = palette.ocean;
+      ctx.fillRect(0, 0, w, h);
 
-    // 2. High-Resolution Satellite Raster Tile Layer with Infinite Horizontal Wrap
-    if (isSatelliteOrHybrid) {
+      // Continental Landmass Polygons
+      for (const f of features) {
+        if (f.layer === 'continent' && f.coordinates) {
+          ctx.beginPath();
+          const rings = f.coordinates;
+          for (let r = 0; r < rings.length; r++) {
+            const ring = rings[r];
+            for (let i = 0; i < ring.length; i++) {
+              const p = project(ring[i][0], ring[i][1], w, h);
+              if (i === 0) ctx.moveTo(p[0], p[1]);
+              else ctx.lineTo(p[0], p[1]);
+            }
+          }
+          ctx.closePath();
+          ctx.fillStyle = palette.land;
+          ctx.fill();
+          ctx.strokeStyle = palette.landStroke;
+          ctx.lineWidth = 1.2;
+          ctx.stroke();
+        }
+      }
+
+      // Water Features (Rivers/Lakes)
+      for (const f of features) {
+        if (f.layer === 'water' && f.coordinates) {
+          ctx.beginPath();
+          const rings = f.coordinates;
+          for (let r = 0; r < rings.length; r++) {
+            const ring = rings[r];
+            for (let i = 0; i < ring.length; i++) {
+              const p = project(ring[i][0], ring[i][1], w, h);
+              if (i === 0) ctx.moveTo(p[0], p[1]);
+              else ctx.lineTo(p[0], p[1]);
+            }
+          }
+          ctx.closePath();
+          ctx.fillStyle = palette.water;
+          ctx.fill();
+        }
+      }
+
+      // Green Parks
+      for (const f of features) {
+        if (f.layer === 'green' && f.coordinates) {
+          ctx.beginPath();
+          const rings = f.coordinates;
+          for (let r = 0; r < rings.length; r++) {
+            const ring = rings[r];
+            for (let i = 0; i < ring.length; i++) {
+              const p = project(ring[i][0], ring[i][1], w, h);
+              if (i === 0) ctx.moveTo(p[0], p[1]);
+              else ctx.lineTo(p[0], p[1]);
+            }
+          }
+          ctx.closePath();
+          ctx.fillStyle = palette.green;
+          ctx.fill();
+          ctx.strokeStyle = palette.greenStroke;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      }
+    } else {
+      // Satellite, Hybrid, and 3D Modes: Space Backdrop & High-Res Satellite Tiles
+      ctx.fillStyle = '#050811';
+      ctx.fillRect(0, 0, w, h);
+
       const tileZ = Math.min(19, Math.max(0, Math.floor(zoom)));
       const worldSize = 256 * Math.pow(2, zoom);
       const cPx = lonLatToPixel(center[0], center[1], zoom);
@@ -170,7 +258,6 @@ export default function MapViewport({
       const numTiles = Math.pow(2, tileZ);
       const tileSizeOnScreen = (1 / numTiles) * worldSize;
 
-      // Unclamped visible tile range across the whole viewport width
       const minWorldX = cPx[0] - w / 2;
       const maxWorldX = cPx[0] + w / 2;
       let minWorldY = cPx[1] - (pitch > 0 ? h / (2 * Math.cos((pitch * Math.PI) / 180)) : h / 2);
@@ -238,36 +325,32 @@ export default function MapViewport({
           }
         }
       }
-    } else {
-      // Vector Mode (Continents)
-      for (const f of features) {
-        if (f.layer === 'continent' && f.geometry?.type === 'Polygon') {
-          ctx.beginPath();
-          const rings = f.geometry.coordinates;
-          for (let r = 0; r < rings.length; r++) {
-            const ring = rings[r];
-            for (let i = 0; i < ring.length; i++) {
-              const p = project(ring[i][0], ring[i][1], w, h);
-              if (i === 0) ctx.moveTo(p[0], p[1]);
-              else ctx.lineTo(p[0], p[1]);
-            }
-          }
-          ctx.closePath();
-          ctx.fillStyle = palette.continent;
-          ctx.fill();
-        }
-      }
     }
 
-    // 3. Roads & Highways (Vector & Hybrid mode)
+    // =========================================================================
+    // 2. 3D ATMOSPHERIC HORIZON & SKY GRADIENT
+    // =========================================================================
+    if (pitch > 25 || activeMode === '3d') {
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, h * 0.32);
+      skyGrad.addColorStop(0, '#020617');
+      skyGrad.addColorStop(0.5, 'rgba(15, 23, 42, 0.7)');
+      skyGrad.addColorStop(1, 'rgba(15, 23, 42, 0)');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, w, h * 0.32);
+    }
+
+    // =========================================================================
+    // 3. ROADS & HIGHWAYS (Skipped in pure Satellite mode for raw photography)
+    // =========================================================================
     if (activeMode !== 'satellite') {
       const roadFeatures = features.filter((f) => f.layer === 'road');
 
-      // Casing
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
+
+      // Casing
       for (const f of roadFeatures) {
-        const coords = f.geometry?.coordinates;
+        const coords = f.geometry ? f.geometry.coordinates : f.coordinates;
         if (!coords || coords.length < 2) continue;
         const kind = f.properties?.kind || 'secondary';
         const baseWidth = kind === 'motorway' ? (zoom >= 14 ? 10 : 6) : zoom >= 14 ? 7 : 4;
@@ -278,14 +361,14 @@ export default function MapViewport({
           if (i === 0) ctx.moveTo(p[0], p[1]);
           else ctx.lineTo(p[0], p[1]);
         }
-        ctx.strokeStyle = activeMode === 'hybrid' ? 'rgba(0, 0, 0, 0.75)' : palette.roadCasing;
-        ctx.lineWidth = baseWidth + 2;
+        ctx.strokeStyle = activeMode === 'vector' ? palette.roadCasing : 'rgba(0, 0, 0, 0.85)';
+        ctx.lineWidth = baseWidth + 2.5;
         ctx.stroke();
       }
 
-      // Inner
+      // Inner Road Surface
       for (const f of roadFeatures) {
-        const coords = f.geometry?.coordinates;
+        const coords = f.geometry ? f.geometry.coordinates : f.coordinates;
         if (!coords || coords.length < 2) continue;
         const kind = f.properties?.kind || 'secondary';
         const baseWidth = kind === 'motorway' ? (zoom >= 14 ? 10 : 6) : zoom >= 14 ? 7 : 4;
@@ -296,14 +379,133 @@ export default function MapViewport({
           if (i === 0) ctx.moveTo(p[0], p[1]);
           else ctx.lineTo(p[0], p[1]);
         }
-        ctx.strokeStyle = activeMode === 'hybrid' ? (kind === 'motorway' ? '#fbbf24' : '#ffffff') : palette.roadPrimary;
+        if (activeMode === 'vector') {
+          ctx.strokeStyle = kind === 'motorway' ? palette.roadMotorway : palette.roadPrimary;
+        } else {
+          // Hybrid & 3D: High-contrast neon gold / crisp white
+          ctx.strokeStyle = kind === 'motorway' ? '#fbbf24' : '#ffffff';
+        }
         ctx.lineWidth = baseWidth;
         ctx.stroke();
       }
     }
 
-    // 4. Navigation Route Line
+    // =========================================================================
+    // 4. 3D EXTRUDED SKYSCRAPER PRISMS (3D Mode or Tilt)
+    // =========================================================================
+    if (activeMode === '3d' || (pitch > 20 && zoom >= 10)) {
+      const bldgFeatures = features.filter((f) => f.layer === 'building');
+      // Sort back-to-front by latitude for proper depth ordering
+      bldgFeatures.sort((a, b) => {
+        const aLat = a.coordinates?.[0]?.[0]?.[1] || 0;
+        const bLat = b.coordinates?.[0]?.[0]?.[1] || 0;
+        return bLat - aLat;
+      });
+
+      const metersPerPixel = (Math.cos((center[1] * Math.PI) / 180) * 40075016.686) / (256 * Math.pow(2, zoom));
+      const pitchRad = (pitch * Math.PI) / 180.0;
+
+      for (const b of bldgFeatures) {
+        const coords = b.coordinates?.[0];
+        if (!coords || coords.length < 4) continue;
+
+        const heightM = b.properties?.height || 120;
+        const extrudePx = Math.min(260, Math.max(12, (heightM / metersPerPixel) * Math.sin(pitchRad) * 1.6));
+
+        const basePoints = coords.map((c: [number, number]) => project(c[0], c[1], w, h));
+        const roofPoints = basePoints.map((p: [number, number]) => [p[0], p[1] - extrudePx] as [number, number]);
+
+        // 1. Ground Drop Shadow
+        ctx.beginPath();
+        for (let i = 0; i < basePoints.length; i++) {
+          if (i === 0) ctx.moveTo(basePoints[i][0] + extrudePx * 0.3, basePoints[i][1]);
+          else ctx.lineTo(basePoints[i][0] + extrudePx * 0.3, basePoints[i][1]);
+        }
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        ctx.fill();
+
+        // 2. Extruded Side Walls with Sunlight Shading
+        const wallColor = b.properties?.wallColor || palette.buildingWallFront;
+        const sideShadow = palette.buildingWallSide;
+
+        for (let i = 0; i < basePoints.length - 1; i++) {
+          const p1 = basePoints[i];
+          const p2 = basePoints[i + 1];
+          const r1 = roofPoints[i];
+          const r2 = roofPoints[i + 1];
+
+          // Face normal dot product to simulate top-left sun illumination
+          const isFrontFace = p2[0] >= p1[0];
+
+          ctx.beginPath();
+          ctx.moveTo(p1[0], p1[1]);
+          ctx.lineTo(p2[0], p2[1]);
+          ctx.lineTo(r2[0], r2[1]);
+          ctx.lineTo(r1[0], r1[1]);
+          ctx.closePath();
+
+          ctx.fillStyle = isFrontFace ? wallColor : sideShadow;
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+          ctx.lineWidth = 0.8;
+          ctx.stroke();
+        }
+
+        // 3. Top Roof Face
+        ctx.beginPath();
+        for (let i = 0; i < roofPoints.length; i++) {
+          if (i === 0) ctx.moveTo(roofPoints[i][0], roofPoints[i][1]);
+          else ctx.lineTo(roofPoints[i][0], roofPoints[i][1]);
+        }
+        ctx.closePath();
+        ctx.fillStyle = b.properties?.roofColor || palette.buildingRoof;
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+
+        // 4. Floating 3D Landmark Label
+        if (b.properties?.name && zoom >= 12) {
+          const rx = roofPoints[0][0];
+          const ry = roofPoints[0][1] - 8;
+
+          ctx.font = '700 11px sans-serif';
+          const title = `${b.properties.name} (${heightM}m)`;
+          const tw = ctx.measureText(title).width;
+
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.roundRect(rx - tw / 2 - 6, ry - 14, tw + 12, 18, 4);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = '#38bdf8';
+          ctx.textAlign = 'center';
+          ctx.fillText(title, rx, ry);
+        }
+      }
+    }
+
+    // =========================================================================
+    // 5. NAVIGATION ROUTE LINE (3D Elevated Ribbon in 3D Mode)
+    // =========================================================================
     if (route && route.path && route.path.length >= 2) {
+      if (activeMode === '3d') {
+        // Ground Shadow
+        ctx.beginPath();
+        for (let i = 0; i < route.path.length; i++) {
+          const p = project(route.path[i][0], route.path[i][1], w, h);
+          if (i === 0) ctx.moveTo(p[0] + 4, p[1] + 4);
+          else ctx.lineTo(p[0] + 4, p[1] + 4);
+        }
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.lineWidth = 10;
+        ctx.stroke();
+      }
+
       ctx.beginPath();
       for (let i = 0; i < route.path.length; i++) {
         const p = project(route.path[i][0], route.path[i][1], w, h);
@@ -335,14 +537,35 @@ export default function MapViewport({
       ctx.stroke();
     }
 
-    // 5. Markers
+    // =========================================================================
+    // 6. MARKERS (3D Standing Pin in 3D Mode)
+    // =========================================================================
     for (const m of markers) {
       const p = project(m.lon, m.lat, w, h);
       if (p[0] < -40 || p[0] > w + 40 || p[1] < -40 || p[1] > h + 40) continue;
 
       ctx.save();
+
+      if (activeMode === '3d') {
+        // Ground Anchor Shadow
+        ctx.beginPath();
+        ctx.ellipse(p[0], p[1], 8, 4, 0, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+        ctx.fill();
+
+        // Pin Vertical Stem
+        ctx.beginPath();
+        ctx.moveTo(p[0], p[1]);
+        ctx.lineTo(p[0], p[1] - 18);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      const pinY = activeMode === '3d' ? p[1] - 22 : p[1] - 14;
+
       ctx.beginPath();
-      ctx.arc(p[0], p[1] - 14, 11, 0, Math.PI * 2);
+      ctx.arc(p[0], pinY, 11, 0, Math.PI * 2);
       ctx.fillStyle = m.color || '#2563eb';
       ctx.fill();
       ctx.lineWidth = 2.5;
@@ -350,7 +573,7 @@ export default function MapViewport({
       ctx.stroke();
 
       ctx.beginPath();
-      ctx.arc(p[0], p[1] - 14, 4, 0, Math.PI * 2);
+      ctx.arc(p[0], pinY, 4, 0, Math.PI * 2);
       ctx.fillStyle = '#ffffff';
       ctx.fill();
 
@@ -359,17 +582,18 @@ export default function MapViewport({
         ctx.textAlign = 'center';
         ctx.strokeStyle = 'rgba(0, 0, 0, 0.85)';
         ctx.lineWidth = 3.5;
-        ctx.strokeText(m.title, p[0], p[1] + 16);
+        ctx.strokeText(m.title, p[0], pinY + 28);
         ctx.fillStyle = '#ffffff';
-        ctx.fillText(m.title, p[0], p[1] + 16);
+        ctx.fillText(m.title, p[0], pinY + 28);
       }
       ctx.restore();
     }
 
-    // 6. Hierarchical Labels by Zoom
+    // =========================================================================
+    // 7. HIERARCHICAL LABELS (Distinct styling across modes)
+    // =========================================================================
     const labelBoxes: { minX: number; maxX: number; minY: number; maxY: number }[] = [];
 
-    // Filter features by zoom hierarchy
     const visibleLabelFeatures = features.filter((f) => {
       const kind = f.properties?.kind || f.layer;
       if (zoom < 5) {
@@ -402,7 +626,7 @@ export default function MapViewport({
       }
 
       const tw = ctx.measureText(name).width;
-      const bbox = { minX: p[0] - tw / 2 - 6, maxX: p[0] + tw / 2 + 6, minY: p[1] - 8, maxY: p[1] + 16 };
+      const bbox = { minX: p[0] - tw / 2 - 8, maxX: p[0] + tw / 2 + 8, minY: p[1] - 10, maxY: p[1] + 18 };
 
       let collision = false;
       for (const b of labelBoxes) {
@@ -414,19 +638,38 @@ export default function MapViewport({
       if (collision) continue;
       labelBoxes.push(bbox);
 
-      ctx.textAlign = 'center';
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)';
-      ctx.lineWidth = isCountry ? 4 : 3;
-      ctx.strokeText(name, p[0], p[1] + 5);
-
-      if (isOcean) {
-        ctx.fillStyle = '#7dd3fc';
-      } else if (isCountry) {
-        ctx.fillStyle = '#ffffff';
-      } else {
-        ctx.fillStyle = isSatelliteOrHybrid ? '#f8fafc' : palette.text;
+      // In Hybrid mode: draw dark translucent badge pill behind text for high legibility
+      if (activeMode === 'hybrid' && !isOcean) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.roundRect(p[0] - tw / 2 - 6, p[1] - 10, tw + 12, 20, 10);
+        ctx.fill();
+        ctx.stroke();
       }
-      ctx.fillText(name, p[0], p[1] + 5);
+
+      ctx.textAlign = 'center';
+      if (activeMode === 'vector') {
+        ctx.strokeStyle = palette.textHalo;
+        ctx.lineWidth = 3.5;
+        ctx.strokeText(name, p[0], p[1] + 4);
+        ctx.fillStyle = palette.text;
+        ctx.fillText(name, p[0], p[1] + 4);
+      } else {
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)';
+        ctx.lineWidth = isCountry ? 4 : 3;
+        ctx.strokeText(name, p[0], p[1] + 4);
+
+        if (isOcean) {
+          ctx.fillStyle = '#7dd3fc';
+        } else if (isCountry) {
+          ctx.fillStyle = '#ffffff';
+        } else {
+          ctx.fillStyle = '#f8fafc';
+        }
+        ctx.fillText(name, p[0], p[1] + 4);
+      }
     }
 
     ctx.restore();
@@ -438,147 +681,92 @@ export default function MapViewport({
   }, [render]);
 
   // Touch and Mouse Gesture Handling
-  useEffect(() => {
+  const isDraggingRef = useRef(false);
+  const dragStartRef = useRef<[number, number]>([0, 0]);
+  const centerStartRef = useRef<[number, number]>([0, 0]);
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    // Only drag on left click (button === 0)
+    if (e.button !== 0) return;
+    isDraggingRef.current = true;
+    dragStartRef.current = [e.clientX, e.clientY];
+    centerStartRef.current = [...center];
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDraggingRef.current) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    let isDragging = false;
-    let startX = 0;
-    let startY = 0;
-    let moved = false;
+    const dx = e.clientX - dragStartRef.current[0];
+    let dy = e.clientY - dragStartRef.current[1];
+    if (pitch > 0) {
+      dy = dy / Math.cos((pitch * Math.PI) / 180);
+    }
 
-    // Mouse Drag (Left-click pan only)
-    const onMouseDown = (e: MouseEvent) => {
-      if (e.button === 0) {
-        isDragging = true;
-        moved = false;
-        startX = e.clientX;
-        startY = e.clientY;
-        canvas.style.cursor = 'grabbing';
-      }
-    };
+    const cPx = lonLatToPixel(centerStartRef.current[0], centerStartRef.current[1], zoom);
+    const newGeo = pixelToLonLat(cPx[0] - dx, cPx[1] - dy, zoom);
+    onCenterChange(newGeo, zoom);
+  };
 
-    const onMouseMove = (e: MouseEvent) => {
-      if (!isDragging) return;
-      const dx = e.clientX - startX;
-      const dy = e.clientY - startY;
-      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) moved = true;
+  const handleMouseUp = () => {
+    isDraggingRef.current = false;
+  };
 
-      const rect = canvas.getBoundingClientRect();
-      const newCenter = unproject(rect.width / 2.0 - dx, rect.height / 2.0 - dy, rect.width, rect.height);
-      onCenterChange(newCenter, zoom);
-      startX = e.clientX;
-      startY = e.clientY;
-    };
+  // Smooth Wheel Zoom directed at mouse cursor
+  const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-    const onMouseUp = (e: MouseEvent) => {
-      if (e.button === 0 && isDragging) {
-        isDragging = false;
-        canvas.style.cursor = 'grab';
-      }
-    };
+    const rect = canvas.getBoundingClientRect();
+    const cursorX = e.clientX - rect.left;
+    const cursorY = e.clientY - rect.top;
 
-    // Right-Click Context Menu Trigger
-    const onContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
-      const rect = canvas.getBoundingClientRect();
-      const clickX = e.clientX - rect.left;
-      const clickY = e.clientY - rect.top;
-      const geo = unproject(clickX, clickY, rect.width, rect.height);
-      onMapClick(geo, [clickX, clickY]);
-    };
+    const mouseGeoBefore = unproject(cursorX, cursorY, rect.width, rect.height);
+    const zoomDelta = -e.deltaY * 0.0025;
+    const nextZoom = Math.min(19, Math.max(1.2, zoom + zoomDelta));
 
-    // Smooth & Ultra-Responsive Wheel Zoom
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      const zoomDelta = -e.deltaY * 0.0025;
-      const nextZoom = Math.max(1, Math.min(19, zoom + zoomDelta));
+    const worldSizeAfter = 256 * Math.pow(2, nextZoom);
+    const mPxAfter = lonLatToPixel(mouseGeoBefore[0], mouseGeoBefore[1], nextZoom);
 
-      const rect = canvas.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-      const mouseGeo = unproject(mouseX, mouseY, rect.width, rect.height);
+    let screenDx = cursorX - rect.width / 2.0;
+    let screenDy = cursorY - rect.height / 2.0;
+    if (pitch > 0) {
+      screenDy = screenDy / Math.cos((pitch * Math.PI) / 180);
+    }
 
-      const factor = 1 - Math.pow(2, zoom - nextZoom);
-      const nextLon = center[0] + (mouseGeo[0] - center[0]) * factor * 0.4;
-      const nextLat = center[1] + (mouseGeo[1] - center[1]) * factor * 0.4;
+    const newCenterPxX = mPxAfter[0] - screenDx;
+    const newCenterPxY = mPxAfter[1] - screenDy;
+    const newCenter = pixelToLonLat(newCenterPxX, newCenterPxY, nextZoom);
 
-      onCenterChange([nextLon, nextLat], nextZoom);
-    };
+    onCenterChange(newCenter, nextZoom);
+  };
 
-    // Mobile Touch Handlers
-    let initialTouchDist = 0;
-    let initialTouchZoom = zoom;
-
-    const onTouchStart = (e: TouchEvent) => {
-      if (e.touches.length === 1) {
-        isDragging = true;
-        moved = false;
-        startX = e.touches[0].clientX;
-        startY = e.touches[0].clientY;
-      } else if (e.touches.length === 2) {
-        isDragging = false;
-        initialTouchDist = Math.hypot(
-          e.touches[0].clientX - e.touches[1].clientX,
-          e.touches[0].clientY - e.touches[1].clientY
-        );
-        initialTouchZoom = zoom;
-      }
-    };
-
-    const onTouchMove = (e: TouchEvent) => {
-      if (e.touches.length === 1 && isDragging) {
-        const dx = e.touches[0].clientX - startX;
-        const dy = e.touches[0].clientY - startY;
-        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) moved = true;
-
-        const rect = canvas.getBoundingClientRect();
-        const newCenter = unproject(rect.width / 2.0 - dx, rect.height / 2.0 - dy, rect.width, rect.height);
-        onCenterChange(newCenter, zoom);
-        startX = e.touches[0].clientX;
-        startY = e.touches[0].clientY;
-      } else if (e.touches.length === 2 && initialTouchDist > 0) {
-        const currentDist = Math.hypot(
-          e.touches[0].clientX - e.touches[1].clientX,
-          e.touches[0].clientY - e.touches[1].clientY
-        );
-        const factor = currentDist / initialTouchDist;
-        const nextZoom = Math.max(1, Math.min(19, initialTouchZoom + Math.log2(factor)));
-        onCenterChange(center, nextZoom);
-      }
-    };
-
-    const onTouchEnd = () => {
-      isDragging = false;
-      initialTouchDist = 0;
-    };
-
-    canvas.addEventListener('mousedown', onMouseDown);
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-    canvas.addEventListener('contextmenu', onContextMenu);
-    canvas.addEventListener('wheel', onWheel, { passive: false });
-
-    canvas.addEventListener('touchstart', onTouchStart, { passive: true });
-    canvas.addEventListener('touchmove', onTouchMove, { passive: true });
-    canvas.addEventListener('touchend', onTouchEnd, { passive: true });
-
-    return () => {
-      canvas.removeEventListener('mousedown', onMouseDown);
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-      canvas.removeEventListener('contextmenu', onContextMenu);
-      canvas.removeEventListener('wheel', onWheel);
-
-      canvas.removeEventListener('touchstart', onTouchStart);
-      canvas.removeEventListener('touchmove', onTouchMove);
-      canvas.removeEventListener('touchend', onTouchEnd);
-    };
-  }, [center, zoom, onCenterChange, onMapClick, unproject]);
+  // Right-Click Context Menu Trigger
+  const handleContextMenu = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const screenX = e.clientX - rect.left;
+    const screenY = e.clientY - rect.top;
+    const geo = unproject(screenX, screenY, rect.width, rect.height);
+    onMapClick(geo, [e.clientX, e.clientY]);
+  };
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
-      <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block', cursor: 'grab' }} />
+      <canvas
+        ref={canvasRef}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        onWheel={handleWheel}
+        onContextMenu={handleContextMenu}
+        style={{ width: '100%', height: '100%', display: 'block', cursor: 'grab' }}
+      />
 
       {/* Floating Layer Switcher Pill (Mac Style, Positioned cleanly below Header) */}
       <div className="floating-layer-switcher">
@@ -599,7 +787,7 @@ export default function MapViewport({
             color: activeMode === 'hybrid' ? '#ffffff' : 'var(--text-secondary)',
             transition: 'all 0.15s ease',
           }}
-          title="고해상도 위성 영상 + 도로망 및 지명 하이브리드"
+          title="고해상도 위성 영상 + 고대비 도로망 및 뱃지 하이브리드"
         >
           <Satellite size={13} />
           <span>하이브리드</span>
@@ -622,7 +810,7 @@ export default function MapViewport({
             color: activeMode === 'satellite' ? '#ffffff' : 'var(--text-secondary)',
             transition: 'all 0.15s ease',
           }}
-          title="순수 실시간 위성 항공 영상"
+          title="순수 실시간 위성 항공 사진 (도로망 제외)"
         >
           <Globe size={13} />
           <span>위성</span>
@@ -645,10 +833,33 @@ export default function MapViewport({
             color: activeMode === 'vector' ? '#ffffff' : 'var(--text-secondary)',
             transition: 'all 0.15s ease',
           }}
-          title="경량 벡터 지도"
+          title="애플 지도 스타일 정밀 벡터 카토그래피"
         >
           <MapIcon size={13} />
           <span>벡터</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleModeSwitch('3d')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+            padding: '6px 12px',
+            borderRadius: '20px',
+            border: 'none',
+            fontSize: 12,
+            fontWeight: 600,
+            cursor: 'pointer',
+            background: activeMode === '3d' ? 'var(--accent)' : 'transparent',
+            color: activeMode === '3d' ? '#ffffff' : 'var(--text-secondary)',
+            transition: 'all 0.15s ease',
+          }}
+          title="3D 입체 투영 및 스카이라인 빌딩군"
+        >
+          <Box size={13} />
+          <span>3D 입체</span>
         </button>
       </div>
 
@@ -693,9 +904,17 @@ export default function MapViewport({
 
         <button
           className="btn btn-outline"
-          onClick={() => setPitch(pitch === 0 ? 45 : 0)}
-          style={{ width: 42, height: 42, padding: 0, borderRadius: '50%', boxShadow: 'var(--shadow-md)' }}
-          title="2.5D 입체 각도 전환"
+          onClick={() => setPitch(pitch === 0 ? 55 : 0)}
+          style={{
+            width: 42,
+            height: 42,
+            padding: 0,
+            borderRadius: '50%',
+            boxShadow: 'var(--shadow-md)',
+            background: pitch > 0 ? 'var(--accent-light)' : undefined,
+            color: pitch > 0 ? 'var(--accent)' : undefined,
+          }}
+          title="2.5D / 3D 각도 전환 (0도 / 55도)"
         >
           <Layers size={17} />
         </button>
@@ -727,6 +946,7 @@ export default function MapViewport({
         <span style={{ color: 'var(--text-muted)' }}>개발: KCS - Koharu Coding Server</span>
         <span>Z: {zoom.toFixed(1)}</span>
         <span>{center[0].toFixed(4)}, {center[1].toFixed(4)}</span>
+        <span>모드: {activeMode.toUpperCase()}{pitch > 0 ? ` (3D ${pitch}°)` : ''}</span>
         <span style={{ color: 'var(--border-color)' }}>|</span>
         <a href="/legal" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 700 }}>
           서비스 정책
