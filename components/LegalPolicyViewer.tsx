@@ -244,19 +244,11 @@ export default function LegalPolicyViewer({ currentSlug }: LegalPolicyViewerProp
                 </thead>
                 <tbody>
                   <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                    <td style={{ padding: '10px 14px', fontWeight: 600 }}>{currentPolicy.version}</td>
-                    <td style={{ padding: '10px 14px', color: 'var(--text-secondary)' }}>{currentPolicy.noticeDate}</td>
-                    <td style={{ padding: '10px 14px', color: 'var(--text-secondary)' }}>{currentPolicy.effectiveDate}</td>
-                    <td style={{ padding: '10px 14px', color: 'var(--text-secondary)' }}>
-                      글로벌 서비스 개편, 독자 GIS 엔진 배포 및 11개 약관 체계 정립
-                    </td>
-                  </tr>
-                  <tr style={{ borderBottom: '1px solid var(--border-color)', opacity: 0.7 }}>
                     <td style={{ padding: '10px 14px', fontWeight: 600 }}>v1.0.0</td>
-                    <td style={{ padding: '10px 14px', color: 'var(--text-secondary)' }}>2026년 09월 18일</td>
-                    <td style={{ padding: '10px 14px', color: 'var(--text-secondary)' }}>2026년 10월 18일</td>
+                    <td style={{ padding: '10px 14px', color: 'var(--text-secondary)' }}>2026년 11월 18일</td>
+                    <td style={{ padding: '10px 14px', color: 'var(--text-secondary)' }}>2026년 11월 18일</td>
                     <td style={{ padding: '10px 14px', color: 'var(--text-secondary)' }}>
-                      Koharu Maps 초기 제정
+                      Koharu Maps 정식 서비스 개시 및 최초 제정
                     </td>
                   </tr>
                 </tbody>
@@ -274,15 +266,15 @@ function renderPolicyContent(slug: string) {
     case 'data-license':
       return (
         <div>
-          <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 12 }}>제1조 (지도 데이터의 출처 및 귀속)</h2>
+          <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 12 }}>제1조 (위성 영상 및 공간 데이터의 출처 및 귀속)</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: 20 }}>
-            1. Koharu Maps(https://map.koharu.live)에서 제공하는 벡터 지도, 도로망 및 건물 윤곽 데이터는 공공 데이터 포털, 대한민국 국토지리정보원 표준 데이터 및 전 세계 자발적 지리정보 기여 프로젝트인 OpenStreetMap(OSM)의 공공 데이터셋을 가공·경량화하여 생성되었습니다.<br />
-            2. OpenStreetMap 기여 데이터는 <strong>Open Data Commons Open Database License (ODbL)</strong>에 따라 라이선스되며, &copy; OpenStreetMap contributors의 저작권 고지를 충실히 준수합니다.
+            1. Koharu Maps(https://map.koharu.live)에서 제공하는 벡터 지도, 도로망, 고해상도 위성 영상(Satellite Imagery) 및 수치 지형 데이터는 KCS - Koharu Coding Server의 독자 공간 데이터베이스 및 항공·위성 관측 데이터셋을 기반으로 생성·가공되었습니다.<br />
+            2. 회사의 모든 위성 타일 렌더링, 도로망 그래프, 공간 인덱싱(QuadTree) 데이터셋 및 HTML5 Canvas 2D/Raster 카토그래픽 엔진은 KCS의 독점적 지식재산권으로 보호됩니다.
           </p>
 
           <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 12 }}>제2조 (독자 벡터 타일 및 렌더링 엔진 저작권)</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: 20 }}>
-            1. 원천 지리 데이터를 공간 인덱싱(QuadTree), A* 최적화 그래프, 고속 바이너리/JSON 타일셋으로 자체 변환한 독자 데이터 구조 및 HTML5 Canvas 2D 카토그래픽 엔진은 Koharu Maps의 독점적 저작물입니다.<br />
+            1. 원천 공간 데이터를 공간 인덱싱(QuadTree), A* 최적화 그래프, 고속 바이너리/JSON 타일셋으로 자체 변환한 독자 데이터 구조 및 HTML5 Canvas 2D 카토그래픽 엔진은 Koharu Maps의 독점적 저작물입니다.<br />
             2. 이용자는 본 서비스가 제공하는 Open API 및 SDK를 통해 허가된 범위 내에서 지도 데이터를 조회하고 호출할 수 있으며, 회사의 사전 서면 승인 없이 대량의 타일 데이터를 무단 스크래핑하거나 역공학하는 행위는 엄격히 금지됩니다.
           </p>
 
@@ -524,9 +516,6 @@ function renderPolicyContent(slug: string) {
             </div>
             <div style={{ padding: 14, background: 'var(--bg-elevated)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
               <strong>&bull; jose (JWT/JWE):</strong> Panva MIT License &copy; Filip Skokan
-            </div>
-            <div style={{ padding: 14, background: 'var(--bg-elevated)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
-              <strong>&bull; OpenStreetMap Data:</strong> Open Data Commons Open Database License (ODbL) &copy; OpenStreetMap contributors
             </div>
           </div>
         </div>

@@ -25,23 +25,10 @@ export default function FavoritesPanel({
   if (!isOpen) return null;
 
   return (
-    <aside style={{
-      position: 'absolute',
-      top: 74,
-      left: 14,
-      width: 360,
-      maxWidth: 'calc(100vw - 28px)',
-      maxHeight: 'calc(100vh - 120px)',
-      background: 'var(--bg-surface-glass)',
-      backdropFilter: 'blur(12px)',
-      border: '1px solid var(--border-color)',
-      borderRadius: 'var(--radius-lg)',
-      boxShadow: 'var(--shadow-lg)',
-      zIndex: 90,
-      display: 'flex',
-      flexDirection: 'column',
-      overflow: 'hidden',
-    }}>
+    <aside className="floating-side-panel">
+      {/* Mobile Pull Handle */}
+      <div className="mobile-pull-handle" />
+
       {/* Header */}
       <div style={{
         display: 'flex',

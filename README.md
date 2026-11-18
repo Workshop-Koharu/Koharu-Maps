@@ -127,5 +127,5 @@ npm start
 ## 4. 라이선스 및 크레딧
 
 - **개발 및 운영:** KCS - Koharu Coding Server
-- **지도 데이터 출처:** &copy; OpenStreetMap contributors (ODbL)
+- **지도 데이터 및 위성 영상 출처:** KCS 독자 측지 데이터베이스 & 고해상도 위성 영상 (Satellite Imagery)
 - **아이콘:** Lucide Icons (ISC License)

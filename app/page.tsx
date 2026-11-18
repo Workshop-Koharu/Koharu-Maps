@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Header from '@/components/Header';
-import MapViewport from '@/components/MapViewport';
+import MapViewport, { LayerMode } from '@/components/MapViewport';
 import RoutePanel from '@/components/RoutePanel';
 import FavoritesPanel from '@/components/FavoritesPanel';
 import AuthModal from '@/components/AuthModal';
@@ -10,6 +10,7 @@ import ContextPopup from '@/components/ContextPopup';
 
 export default function MainPage() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [layerMode, setLayerMode] = useState<LayerMode>('hybrid');
   const [center, setCenter] = useState<[number, number]>([126.9784, 37.5663]); // Seoul
   const [zoom, setZoom] = useState(13);
   const [features, setFeatures] = useState<any[]>([]);
@@ -209,9 +210,11 @@ export default function MainPage() {
         onToggleTheme={handleToggleTheme}
       />
 
-      {/* 2. Vector Map Canvas Viewport */}
+      {/* 2. Vector & Satellite Map Canvas Viewport */}
       <MapViewport
         theme={theme}
+        layerMode={layerMode}
+        onLayerModeChange={setLayerMode}
         features={features}
         route={routeData}
         markers={markers}

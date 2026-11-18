@@ -138,7 +138,7 @@ Koharu Maps는 Resend SDK를 통해 다음 3단계 보안 이메일을 자동 �
 Koharu Maps는 법률 준수 및 사용자 권익 보호를 위해 11가지의 세부 정책 문서를 제공하며, 모든 약관 및 방침 변경 시 **시행일 최소 30일(1개월) 전에 등록된 사용자의 공식 이메일로 개정 사항을 사전 발송**합니다.
 
 ### 7.1 전체 11대 정책 링크
-1. [오프라인 지도 데이터 라이선스 및 출처 고지](https://map.koharu.live/legal/data-license)
+1. [위성 영상 및 지리정보 데이터 라이선스 고지](https://map.koharu.live/legal/data-license)
 2. [개인정보 처리방침](https://map.koharu.live/legal/privacy) *(개인정보분쟁조정위원회 1833-6972, 침해신고센터 118, 대검찰청 1301, 경찰청 182 등 공식 구제기관 명시)*
 3. [서비스 이용약관](https://map.koharu.live/legal/terms) *(대한민국 준거법 및 서울중앙지방법원 제1심 관할 법원 합의 조항 필수 명시)*
 4. [쿠키 정책](https://map.koharu.live/legal/cookie-policy)
